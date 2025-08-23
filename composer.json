@@ -1,0 +1,56 @@
+{
+    "name": "sanderdewijs/lara-livewire-maps",
+    "description": "Laravel Livewire Google Maps component with markers and optional clustering.",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Sander de Wijs"
+        }
+    ],
+    "require": {
+        "php": ">=8.3",
+        "livewire/livewire": "^3.6"
+    },
+    "require-dev": {
+        "pestphp/pest": "^4.0",
+        "pestphp/pest-plugin-laravel": "^4.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Sdw\\LivewireMaps\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Sdw\\LivewireMaps\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "post-update-cmd": [],
+        "test": "pest",
+        "pest": "pest",
+        "post-autoload-dump": [
+            "@clear",
+            "@prepare"
+        ],
+        "serve": [
+            "Composer\\Config::disableProcessTimeout",
+            "@build",
+            "@php vendor/bin/testbench serve --ansi"
+        ],
+        "lint": []
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Sdw\\LivewireMaps\\LivewireMapServiceProvider"
+            ]
+        }
+    },
+    "config": {
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        }
+    }
+}

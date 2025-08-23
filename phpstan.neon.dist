@@ -1,0 +1,10 @@
+includes:
+    - vendor/nunomaduro/larastan/extension.neon
+    - vendor/nunomaduro/larastan/rules.neon
+
+parameters:
+    paths:
+        - src
+    level: 8
+    checkMissingIterableValueType: false
+    ignoreErrors: []
