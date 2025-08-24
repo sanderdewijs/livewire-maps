@@ -1,6 +1,6 @@
 {
   "name": "sanderdewijs/lara-livewire-maps",
-  "description": "Laravel Livewire 3 Google Maps component with markers and optional clustering.",
+  "description": "Laravel Livewire 3 Google Maps component with markers, events, and optional clustering.",
   "type": "library",
   "license": "MIT",
   "keywords": [
