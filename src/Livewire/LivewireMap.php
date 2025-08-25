@@ -93,7 +93,8 @@ class LivewireMap extends Component
         }
 
         // Dispatch an update back to the frontend via Livewire bus with normalized markers
-        $this->dispatch('lw-map:update', [
+        // Use an internal event name so external listeners can still use 'lw-map:update' for input
+        $this->dispatch('lw-map:internal:update', [
             'id' => $this->domId,
             'markers' => $this->markers,
             'useClusters' => $this->useClusters,

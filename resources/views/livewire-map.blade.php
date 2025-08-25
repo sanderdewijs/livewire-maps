@@ -260,7 +260,7 @@
                 try {
                     var bus = window.Livewire || (window.livewire && window.livewire);
                     if (bus && typeof bus.on === 'function') {
-                        bus.on('lw-map:update', function(d) {
+                        bus.on('lw-map:internal:update', function(d) {
                             if (!d || (d.id && d.id !== domId)) return;
                             updateMarkers(instance, d.markers || [], typeof d.useClusters === 'boolean' ? d.useClusters : initial.useClusters, d.clusterOptions || initial.clusterOptions);
                         });
