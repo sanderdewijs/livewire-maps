@@ -19,6 +19,17 @@ class LivewireMap extends Component
     public $domId;
     public $drawType = null; // 'circle' | 'polygon' | null
 
+    /**
+     * Listen for map update events from Livewire.
+     * We'll normalize incoming markers and update the internal state.
+     *
+     * Using Livewire's event system ensures data flows through PHP so marker
+     * shapes like `lat_lng` strings/arrays get normalized consistently.
+     */
+    protected $listeners = [
+        'lw-map:update' => 'onMapUpdate',
+    ];
+
     public function mount(
         $apiKey = null,
         $zoom = null,
@@ -31,7 +42,7 @@ class LivewireMap extends Component
         $clusterOptions = null,
         $markers = [],
         $drawType = null
-    ) {
+    ): void {
         // Read defaults from config
         $cfg = config('livewire-maps');
 
@@ -59,6 +70,35 @@ class LivewireMap extends Component
 
         // Prefer Livewire component id if available for a stable DOM id across re-renders
         $this->domId = 'lw-map-' . (property_exists($this, 'id') ? $this->id : substr(md5(spl_object_hash($this)), 0, 8));
+    }
+
+    /**
+     * Normalize and update markers when the map update event is received.
+     *
+     * @param array $payload { id?: string, markers?: array, useClusters?: bool, clusterOptions?: array }
+     */
+    public function onMapUpdate(array $payload = []): void
+    {
+        $incoming = isset($payload['markers']) && is_array($payload['markers']) ? $payload['markers'] : [];
+
+        // Normalize and update component state
+        $this->markers = $this->normalizeMarkers($incoming);
+
+        // Optionally allow toggling clusters via event
+        if (array_key_exists('useClusters', $payload)) {
+            $this->useClusters = (bool) $payload['useClusters'];
+        }
+        if (isset($payload['clusterOptions']) && is_array($payload['clusterOptions'])) {
+            $this->clusterOptions = $payload['clusterOptions'];
+        }
+
+        // Dispatch an update back to the frontend via Livewire bus with normalized markers
+        $this->dispatch('lw-map:update', [
+            'id' => $this->domId,
+            'markers' => $this->markers,
+            'useClusters' => $this->useClusters,
+            'clusterOptions' => $this->clusterOptions,
+        ]);
     }
 
     protected function normalizeMarkers($markers): array

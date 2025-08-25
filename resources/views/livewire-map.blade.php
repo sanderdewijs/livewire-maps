@@ -241,24 +241,14 @@
             // Expose an API for external control
             el.dispatchEvent(new CustomEvent('lw-map:ready', { detail: { id: domId, map: map }, bubbles: true }));
 
-            // Listen for updates: element-level
-            el.addEventListener('lw-map:update', function(e) {
-                var d = e.detail || {};
-                if (d.id && d.id !== domId) return;
-                updateMarkers(instance, d.markers || [], typeof d.useClusters === 'boolean' ? d.useClusters : initial.useClusters, d.clusterOptions || initial.clusterOptions);
-            });
+            // Listen for updates: element-level (draw only)
             el.addEventListener('lw-map:draw', function(e) {
                 var d = e.detail || {};
                 if (d.id && d.id !== domId) return;
                 startDrawing(instance, d.type || null);
             });
 
-            // Window-level custom event
-            window.addEventListener('lw-map:update', function(e) {
-                var d = (e && e.detail) || {};
-                if (!d || (d.id && d.id !== domId)) return;
-                updateMarkers(instance, d.markers || [], typeof d.useClusters === 'boolean' ? d.useClusters : initial.useClusters, d.clusterOptions || initial.clusterOptions);
-            });
+            // Window-level custom event (draw only)
             window.addEventListener('lw-map:draw', function(e) {
                 var d = (e && e.detail) || {};
                 if (!d || (d.id && d.id !== domId)) return;
