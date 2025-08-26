@@ -74,32 +74,24 @@ class LivewireMap extends Component
 
     /**
      * Normalize and update markers when the map update event is received.
-     *
-     * @param array $payload { id?: string, markers?: array, useClusters?: bool, clusterOptions?: array }
      */
-    public function onMapUpdate(array $payload = []): void
+    public function onMapUpdate(array $markers = [], bool $useClusters = false, array $clusterOptions = []): void
     {
-        $incoming = isset($payload['markers']) && is_array($payload['markers']) ? $payload['markers'] : [];
-
-        // Normalize and update component state
-        $this->markers = $this->normalizeMarkers($incoming);
+        //Normalize and update component state
+        $this->markers = $this->normalizeMarkers($markers);
 
         // Optionally allow toggling clusters via event
-        if (array_key_exists('useClusters', $payload)) {
-            $this->useClusters = (bool) $payload['useClusters'];
-        }
-        if (isset($payload['clusterOptions']) && is_array($payload['clusterOptions'])) {
-            $this->clusterOptions = $payload['clusterOptions'];
-        }
+        $this->useClusters = (bool) $useClusters;
+        $this->clusterOptions = $clusterOptions;
 
-        // Dispatch an update back to the frontend via Livewire bus with normalized markers
+		// Dispatch an update back to the frontend via Livewire bus with normalized markers
         // Use an internal event name so external listeners can still use 'lw-map:update' for input
-        $this->dispatch('lw-map:internal:update', [
-            'id' => $this->domId,
-            'markers' => $this->markers,
-            'useClusters' => $this->useClusters,
-            'clusterOptions' => $this->clusterOptions,
-        ]);
+        $this->dispatch('lw-map-internal-update',
+            id: $this->domId,
+            markers: $this->markers,
+            useClusters: $this->useClusters,
+            clusterOptions:  $this->clusterOptions,
+        );
     }
 
     protected function normalizeMarkers($markers): array

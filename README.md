@@ -114,25 +114,31 @@ window.addEventListener('lw-map:ready', (e) => {
 ### Update markers (and optionally toggle clustering)
 - Name: lw-map:update
 - Where the map listens: element event, window event, and Livewire bus
-- Payload fields the map accepts:
+- Payload shape (required): the event MUST include a `payload` property containing the update options. No exceptions.
+  - payload: {
     - id?: string (target a specific map instance)
     - markers?: array (marker list as described above)
     - useClusters?: boolean
     - clusterOptions?: object
+  }
 
 Examples (trigger updates):
 ```js
-// Window event
+// Window event (recommended)
 window.dispatchEvent(new CustomEvent('lw-map:update', {
-  detail: { id: 'lw-map-123', markers: [...], useClusters: true }
+  detail: { payload: { id: 'lw-map-123', markers: [...], useClusters: true } }
 }));
 
-// Livewire v3 client bus
+// Livewire v3 client bus (from the browser)
 (window.Livewire || window.livewire)?.dispatch('lw-map:update', {
-  id: 'lw-map-123',
-  markers: [...],
+  payload: {
+    id: 'lw-map-123',
+    markers: [...],
+  }
 });
 ```
+
+Note: The frontend does not normalize update payloads. All normalization happens in the Livewire component. Always send the nested `payload` structure.
 
 ### Enter/exit draw mode
 - Name: lw-map:draw
