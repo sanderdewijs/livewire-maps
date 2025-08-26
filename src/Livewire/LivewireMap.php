@@ -60,7 +60,7 @@ class LivewireMap extends Component
         $this->height = $height ?? ($cfg['default_height'] ?? '400px');
 
         $defaultUseClusters = (bool) ($cfg['use_clusters'] ?? false);
-        $this->useClusters = is_bool($useClusters) ? $useClusters : $defaultUseClusters;
+        $this->useClusters = $this->toBoolean($useClusters, $defaultUseClusters);
 
         $this->mapOptions = is_array($mapOptions) ? $mapOptions : (is_array($cfg['map_options'] ?? null) ? $cfg['map_options'] : []);
         $this->clusterOptions = is_array($clusterOptions) ? $clusterOptions : (is_array($cfg['cluster_options'] ?? null) ? $cfg['cluster_options'] : []);
@@ -100,6 +100,22 @@ class LivewireMap extends Component
             'useClusters' => $this->useClusters,
             'clusterOptions' => $this->clusterOptions,
         ]);
+    }
+
+    protected function toBoolean($value, bool $default): bool
+    {
+        if (is_bool($value)) {
+            return $value;
+        }
+
+        if (is_string($value) || is_numeric($value)) {
+            $filtered = filter_var($value, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+            if ($filtered !== null) {
+                return $filtered;
+            }
+        }
+
+        return $default;
     }
 
     protected function normalizeMarkers($markers): array
