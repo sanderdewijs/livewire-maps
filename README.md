@@ -122,6 +122,8 @@ window.addEventListener('lw-map:ready', (e) => {
     - clusterOptions?: object
   }
 
+When more than one marker is provided, the map automatically adjusts its bounds to fit all markers.
+
 Examples (trigger updates):
 ```js
 // Window event (recommended)
