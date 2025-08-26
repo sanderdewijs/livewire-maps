@@ -344,6 +344,15 @@
                     startDrawing(instance, d.type || null);
                 });
 
+                // Also listen on window for draw events so parents can dispatch globally
+                window.addEventListener('lw-map:draw', function(e) {
+                    // Avoid handling twice when event targets this element directly
+                    if (e && e.target && e.target.id === domId) { return; }
+                    var d = (e && e.detail) || {};
+                    if (d.id && d.id !== domId) return;
+                    startDrawing(instance, d.type || null);
+                });
+
                 // ---- (Optioneel) Livewire bus — UIT laten als je element‑events gebruikt
                 function subscribeLivewireBus() {
                     try {
