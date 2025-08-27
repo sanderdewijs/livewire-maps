@@ -148,6 +148,20 @@
             instance.markers = markers;
             instance.markerData = markerData || [];
 
+            // Auto zoom to markers when more than one is present
+            if ((markers || []).length > 1) {
+                try {
+                    var bounds = new google.maps.LatLngBounds();
+                    for (var i = 0; i < markers.length; i++) {
+                        var pos = markers[i].getPosition && markers[i].getPosition();
+                        if (pos) { bounds.extend(pos); }
+                    }
+                    if (!bounds.isEmpty()) {
+                        instance.map.fitBounds(bounds);
+                    }
+                } catch (_) {}
+            }
+
             if (!useClusters) return;
 
             ensureClusterer(function() {
