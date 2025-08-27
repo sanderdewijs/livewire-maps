@@ -112,35 +112,34 @@ window.addEventListener('lw-map:ready', (e) => {
 ```
 
 ### Update markers (and optionally toggle clustering)
-- Name: lw-map:update
-- Where the map listens: element event, window event, and Livewire bus
-- Payload shape (required): the event MUST include a `payload` property containing the update options. No exceptions.
-  - payload: {
-    - id?: string (target a specific map instance)
-    - markers?: array (marker list as described above)
-    - useClusters?: boolean
-    - clusterOptions?: object
-  }
+- How to update: dispatch the Livewire event from your PHP component with positional arguments matching the listener signature.
+- Listener signature on the Livewire component: onMapUpdate(array $markers = [], bool $useClusters = false, array $clusterOptions = [])
+- Frontend: the Blade view listens for an internal element event `lw-map-internal-update` which the component emits after normalizing data. You should not dispatch this internal event yourself.
 
-When more than one marker is provided, the map automatically adjusts its bounds to fit all markers.
+Examples (from a Livewire PHP component):
+```php
+// Update only markers (no clustering)
+$this->dispatch('lw-map:update', [
+    ['lat' => 52.0907, 'lng' => 5.1214, 'title' => 'Utrecht'],
+    ['lat_lng' => '52.3676,4.9041', 'title' => 'Amsterdam'],
+]);
 
-Examples (trigger updates):
-```js
-// Window event (recommended)
-window.dispatchEvent(new CustomEvent('lw-map:update', {
-  detail: { payload: { id: 'lw-map-123', markers: [...], useClusters: true } }
-}));
+// Update markers and enable clustering
+$this->dispatch('lw-map:update', [
+    ['lat' => 52.0907, 'lng' => 5.1214],
+    ['lat' => 52.3676, 'lng' => 4.9041],
+], true);
 
-// Livewire v3 client bus (from the browser)
-(window.Livewire || window.livewire)?.dispatch('lw-map:update', {
-  payload: {
-    id: 'lw-map-123',
-    markers: [...],
-  }
-});
+// Update markers, enable clustering, and pass cluster options
+$this->dispatch('lw-map:update', [
+    ['lat' => 52.0907, 'lng' => 5.1214],
+    ['lat' => 52.3676, 'lng' => 4.9041],
+], true, ['maxZoom' => 14]);
 ```
 
-Note: The frontend does not normalize update payloads. All normalization happens in the Livewire component. Always send the nested `payload` structure.
+Notes:
+- Marker shapes are normalized server-side (supports `lat`/`lng`, `lat_lng` array, or `lat_lng` string).
+- Do not dispatch `lw-map:update` from the browser; use your Livewire PHP component.
 
 ### Enter/exit draw mode
 - Name: lw-map:draw
@@ -197,9 +196,70 @@ window.addEventListener('lw-map:selection-complete', (e) => {
 });
 ```
 
+### Selection behavior and use cases
+When a user finishes drawing a circle or polygon, the map emits a `lw-map:selection-complete` event. The intended follow-up action is inferred from whether the selection contains any of your markers.
+
+#### Scenario 1: Area query (no markers captured)
+- Intent: You likely want to query your own data store for items inside the selected area.
+- What you get:
+  - `type`: `circle` or `polygon`
+  - `markers`: [] (empty)
+  - For circles: `center` (lat/lng), `bounds` (north/east/south/west), and `radius` (meters)
+  - For polygons: `polygonPath` (stringified path) and `bounds`
+- Typical next step: Use the `center` + `radius` (circle) or `polygonPath` (polygon) to run a geoquery in your database.
+
+Example payload (circle, no markers):
+```json
+{
+  "id": "lw-map-123",
+  "type": "circle",
+  "markers": [],
+  "center": { "lat": 52.0907, "lng": 5.1214 },
+  "bounds": { "north": 52.2, "east": 5.3, "south": 52.0, "west": 5.0 },
+  "radius": 1500
+}
+```
+
+Example payload (polygon, no markers):
+```json
+{
+  "id": "lw-map-123",
+  "type": "polygon",
+  "markers": [],
+  "bounds": { "north": 52.2, "east": 5.3, "south": 52.0, "west": 5.0 },
+  "polygonPath": "(52.10,5.10),(52.15,5.10),(52.15,5.20),(52.10,5.20)"
+}
+```
+
+#### Scenario 2: Marker selection (one or more markers captured)
+- Intent: You likely want to act on the selected markers (e.g., bulk actions, filtering, linking to records).
+- What you get:
+  - `type`: `circle` or `polygon`
+  - `markers`: An array of your original marker objects that fall inside the shape
+    - Include an `id` with each marker you provide so you can easily identify selected items on the backend.
+- Typical next step: Extract the `id`s from `markers` and pass them to your server or trigger UI actions.
+
+Example payload (markers selected):
+```json
+{
+  "id": "lw-map-123",
+  "type": "polygon",
+  "markers": [
+    { "id": 1, "lat": 52.0907, "lng": 5.1214, "title": "Utrecht" },
+    { "id": 2, "lat": 52.3676, "lng": 4.9041, "title": "Amsterdam" }
+  ]
+}
+```
+
+#### Tips
+- Always include an `id` in your marker definitions if you plan to use marker selection.
+- Differentiate your handling based on whether `markers.length` is zero:
+  - `0` → treat as an area/geoquery
+  - `> 0` → treat as a marker selection
+- See the “Selection complete” event section for the full payload reference and a sample event listener.
 
 ## Using with Livewire actions
-From a Livewire component, you can dispatch to the client bus to update markers or toggle draw mode. For example:
+From a Livewire component, you can update markers or toggle clustering by dispatching the 'lw-map:update' event with positional arguments:
 
 ```php
 // app/Livewire/Example.php
@@ -216,7 +276,11 @@ class Example extends Component
             ['id' => 2, 'lat' => 52.3676, 'lng' => 4.9041, 'title' => 'Amsterdam'],
         ];
 
+        // Update markers (no clustering)
         $this->dispatch('lw-map:update', markers: $markers);
+
+        // Or, update markers and enable clustering with options
+        $this->dispatch('lw-map:update', markers: $markers, useClusters: true, clusterOptions: []);
     }
 
     public function render()
@@ -241,7 +305,9 @@ When `useClusters` is true (at render time or via an update event), markers will
 
 
 ## Multiple Map Instances
-Every map instance gets a unique DOM id (exposed in events as `id`). When sending update or draw events, include the `id` to target a specific instance. If omitted, all instances listening at the window or bus level will receive the payload; each instance filters by `id` when provided.
+Every map instance gets a unique DOM id (exposed in events as `id`).
+- Draw events: when dispatching `lw-map:draw` from the browser, include the `id` to target a specific map; otherwise, all instances may react.
+- Marker updates: when you dispatch `lw-map:update` from PHP, each Livewire component updates its own instance; no browser `id` is needed.
 
 
 ## Notes
