@@ -13,6 +13,15 @@ Works out-of-the-box with Laravel 12 and Livewire 3.
 The component automatically loads the Google Maps JS API with the drawing and geometry libraries and the MarkerClusterer library via CDN.
 
 
+## Installation
+
+Install the package via Composer:
+
+```bash
+composer require sanderdewijs/lara-livewire-maps
+```
+
+
 ## Quick Start
 Render a map with a couple of markers:
 
