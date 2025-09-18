@@ -4,6 +4,13 @@ A lightweight Livewire v3 map component for Google Maps. It renders a map, place
 
 Works out-of-the-box with Laravel 12 and Livewire 3.
 
+## Installation
+Install via Composer:
+
+```bash
+composer require sanderdewijs/lara-livewire-maps
+```
+
 
 ## Requirements
 - Google Maps JavaScript API key.
@@ -90,13 +97,11 @@ The map supports starting draw mode in two ways:
 When the user completes the shape, the component computes which markers fall inside and dispatches a `selection-complete` event with results.
 
 
-## Events and Listeners
-The component communicates via three channels for flexibility:
+## Events and Listeners (advanced/optional)
+Most users can stick to Livewire dispatches from PHP (recommended). The browser/window events below are optional for advanced integrations or when you need direct JS hooks. The component communicates via three channels:
 - DOM element events (dispatched/bubbled from the map element)
 - Window custom events
 - Livewire client bus (window.Livewire or window.livewire)
-
-You can listen on whichever channel fits your integration.
 
 ### Map is ready
 - Name: lw-map:ready
@@ -112,29 +117,29 @@ window.addEventListener('lw-map:ready', (e) => {
 ```
 
 ### Update markers (and optionally toggle clustering)
-- How to update: dispatch the Livewire event from your PHP component with positional arguments matching the listener signature.
-- Listener signature on the Livewire component: onMapUpdate(array $markers = [], bool $useClusters = false, array $clusterOptions = [])
+- How to update: dispatch the Livewire event from your PHP component using named arguments (property: value) as supported by Livewire 3.
+- Listener signature on the Livewire component: onMapUpdate(array $markers = [], bool $useClusters = false, array $clusterOptions = [], array $center = [])
 - Frontend: the Blade view listens for an internal element event `lw-map-internal-update` which the component emits after normalizing data. You should not dispatch this internal event yourself.
 
 Examples (from a Livewire PHP component):
 ```php
 // Update only markers (no clustering)
-$this->dispatch('lw-map:update', [
+$this->dispatch('lw-map:update', markers: [
     ['lat' => 52.0907, 'lng' => 5.1214, 'title' => 'Utrecht'],
     ['lat_lng' => '52.3676,4.9041', 'title' => 'Amsterdam'],
 ]);
 
 // Update markers and enable clustering
-$this->dispatch('lw-map:update', [
+$this->dispatch('lw-map:update', markers: [
     ['lat' => 52.0907, 'lng' => 5.1214],
     ['lat' => 52.3676, 'lng' => 4.9041],
-], true);
+], useClusters: true);
 
 // Update markers, enable clustering, and pass cluster options
-$this->dispatch('lw-map:update', [
+$this->dispatch('lw-map:update', markers: [
     ['lat' => 52.0907, 'lng' => 5.1214],
     ['lat' => 52.3676, 'lng' => 4.9041],
-], true, ['maxZoom' => 14]);
+], useClusters: true, clusterOptions: ['maxZoom' => 14]);
 ```
 
 Notes:
@@ -148,22 +153,27 @@ Notes:
     - id?: string
     - type: 'circle' | 'polygon' | null (null exits draw mode)
 
-Examples:
-```js
-// Start a circle drawing session
-window.dispatchEvent(new CustomEvent('lw-map:draw', {
-  detail: { id: 'lw-map-123', type: 'circle' }
-}));
+Examples (backend PHP and frontend $dispatch):
+```php
+// Backend (Livewire component): start a circle drawing session
+$this->dispatch('lw-map:draw', type: 'circle');
 
 // Switch to polygon
-window.dispatchEvent(new CustomEvent('lw-map:draw', {
-  detail: { id: 'lw-map-123', type: 'polygon' }
-}));
+$this->dispatch('lw-map:draw', type: 'polygon');
 
 // Exit draw mode
-window.dispatchEvent(new CustomEvent('lw-map:draw', {
-  detail: { id: 'lw-map-123', type: null }
-}));
+$this->dispatch('lw-map:draw', type: null);
+```
+
+```html
+<!-- Frontend (inside your Livewire/Alpine scope): start a circle -->
+<button type="button" x-on:click="$dispatch('lw-map:draw', { type: 'circle' })">Circle</button>
+
+<!-- Switch to polygon -->
+<button type="button" x-on:click="$dispatch('lw-map:draw', { type: 'polygon' })">Polygon</button>
+
+<!-- Exit draw mode -->
+<button type="button" x-on:click="$dispatch('lw-map:draw', { type: null })">Exit</button>
 ```
 
 ### Selection complete
@@ -258,8 +268,8 @@ Example payload (markers selected):
   - `> 0` → treat as a marker selection
 - See the “Selection complete” event section for the full payload reference and a sample event listener.
 
-## Using with Livewire actions
-From a Livewire component, you can update markers or toggle clustering by dispatching the 'lw-map:update' event with positional arguments:
+## Using with Livewire (recommended)
+From a Livewire component, you can update markers or toggle clustering by dispatching the 'lw-map:update' event using named arguments (property: value):
 
 ```php
 // app/Livewire/Example.php
@@ -299,6 +309,50 @@ class Example extends Component
 </div>
 ```
 
+
+### Set or update the map center via Livewire
+You can recenter the map by including a center in your Livewire dispatch for 'lw-map:update'. You can pass center as an associative array with lat/lng or as separate centerLat/centerLng values.
+
+Examples:
+
+```php
+// Update center (and keep your markers): re-send your current markers to avoid clearing them
+$this->dispatch('lw-map:update',
+    markers: $markers, // your current markers
+    center: ['lat' => 52.0907, 'lng' => 5.1214],
+);
+
+// Or using separate values
+$this->dispatch('lw-map:update',
+    markers: $markers, // your current markers
+    centerLat: 52.0907,
+    centerLng: 5.1214,
+);
+
+// Combine with clustering options if desired
+$this->dispatch('lw-map:update',
+    markers: $markers,
+    useClusters: true,
+    clusterOptions: ['maxZoom' => 14],
+    center: ['lat' => 52.0907, 'lng' => 5.1214],
+);
+```
+
+Note: The update event replaces the marker list with what you send. If you only want to change the center, re-send your current markers as shown above.
+
+### Start/stop draw mode from Livewire
+You can also control draw mode from your Livewire component using the same dispatch API:
+
+```php
+// Start drawing a circle
+$this->dispatch('lw-map:draw', type: 'circle');
+
+// Switch to polygon
+$this->dispatch('lw-map:draw', type: 'polygon');
+
+// Exit draw mode
+$this->dispatch('lw-map:draw', type: null);
+```
 
 ## Marker Clustering
 When `useClusters` is true (at render time or via an update event), markers will be grouped using @googlemaps/markerclusterer loaded from a CDN. You can pass `clusterOptions` both at render and in update events.

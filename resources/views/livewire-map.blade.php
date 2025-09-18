@@ -290,6 +290,19 @@
             if (!d) return;
             if (d.id && d.id !== domId) return;
 
+            // Determine desired center (supports { center: {lat,lng} } or centerLat/centerLng)
+            var desiredCenter = null;
+            try {
+                if (d.center && typeof d.center === 'object' &&
+                    typeof d.center.lat !== 'undefined' && typeof d.center.lng !== 'undefined') {
+                    var clat = Number(d.center.lat), clng = Number(d.center.lng);
+                    if (!isNaN(clat) && !isNaN(clng)) desiredCenter = { lat: clat, lng: clng };
+                } else if (typeof d.centerLat !== 'undefined' && typeof d.centerLng !== 'undefined') {
+                    var clat2 = Number(d.centerLat), clng2 = Number(d.centerLng);
+                    if (!isNaN(clat2) && !isNaN(clng2)) desiredCenter = { lat: clat2, lng: clng2 };
+                }
+            } catch(_) {}
+
             // Burst de‑dupe binnen 25ms
             var now = (window.performance && performance.now) ? performance.now() : Date.now();
             if (instance._lastUpdateAt && (now - instance._lastUpdateAt) < 25) {
@@ -302,7 +315,8 @@
                 var hash = JSON.stringify({
                     markers: d.markers || [],
                     useClusters: (typeof d.useClusters === 'boolean') ? d.useClusters : initial.useClusters,
-                    clusterOptions: d.clusterOptions || initial.clusterOptions
+                    clusterOptions: d.clusterOptions || initial.clusterOptions,
+                    center: desiredCenter
                 });
                 if (instance._lastPayloadHash === hash) {
                     return;
@@ -316,6 +330,11 @@
                 (typeof d.useClusters === 'boolean') ? d.useClusters : initial.useClusters,
                 d.clusterOptions || initial.clusterOptions
             );
+
+            // Apply center after markers/clusters update to prevent fitBounds from overriding it
+            if (desiredCenter) {
+                try { instance.map.setCenter(desiredCenter); } catch(_) {}
+            }
         }
 
         // ---- Init -----------------------------------------------------------------

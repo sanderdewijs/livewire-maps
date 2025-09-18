@@ -75,7 +75,7 @@ class LivewireMap extends Component
     /**
      * Normalize and update markers when the map update event is received.
      */
-    public function onMapUpdate(array $markers = [], bool $useClusters = false, array $clusterOptions = []): void
+    public function onMapUpdate(array $markers = [], bool $useClusters = false, array $clusterOptions = [], array $center = []): void
     {
         //Normalize and update component state
         $this->markers = $this->normalizeMarkers($markers);
@@ -83,7 +83,11 @@ class LivewireMap extends Component
         // Optionally allow toggling clusters via event
         $this->useClusters = (bool) $useClusters;
         $this->clusterOptions = $clusterOptions;
-
+		
+		if($center) {
+			$this->centerLat = $center['lat'];
+			$this->centerLng = $center['lng'];
+		}
 		// Dispatch an update back to the frontend via Livewire bus with normalized markers
         // Use an internal event name so external listeners can still use 'lw-map:update' for input
         $this->dispatch('lw-map-internal-update',
@@ -91,6 +95,8 @@ class LivewireMap extends Component
             markers: $this->markers,
             useClusters: $this->useClusters,
             clusterOptions:  $this->clusterOptions,
+	        centerLat: $this->centerLat,
+	        centerLng: $this->centerLng,
         );
     }
 
