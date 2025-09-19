@@ -3,7 +3,44 @@
 
 {{-- Bootstrap global namespace to avoid inline duplicates in components --}}
 <script>
-    window.__LW_MAPS = window.__LW_MAPS || { instances: {}, queue: [], ready: false };
+	window.__LW_MAPS = window.__LW_MAPS || { instances: {}, queue: [], ready: false };
+
+	(function() {
+		var LW = window.__LW_MAPS;
+
+		// 1) Shim die items pusht vóór het bundle geladen is
+		if (typeof LW.queueInit !== 'function') {
+			LW.queueInit = function(domId, config) {
+				try { LW.queue.push({ domId: String(domId), config: config || {} }); } catch (_) {}
+			};
+		}
+
+		// 2) Poller die wacht op de échte queueInit uit het bundle en daarna de bestaande queue drained
+		if (!LW.__bootDrainPoller) {
+			LW.__bootDrainPoller = setInterval(function() {
+				try {
+					// Als het bundle geladen is, zal LW.queueInit opnieuw gedefinieerd zijn (niet onze shim-referentie)
+					var isReal = false;
+					try {
+						// simpele heuristiek: echte implementatie heeft timers en meer logica; maar vooral: andere referentie
+						isReal = !!LW.queueInit && LW.queueInit.toString().indexOf('processQueue') !== -1;
+					} catch(_) {}
+
+					if (isReal) {
+						// Drain bestaande queue via de echte queueInit zodat processQueue/timers worden geactiveerd
+						var items = LW.queue.slice();
+						LW.queue = [];
+						items.forEach(function(item){
+							try { LW.queueInit(item.domId, item.config); } catch(_) {}
+						});
+
+						clearInterval(LW.__bootDrainPoller);
+						LW.__bootDrainPoller = null;
+					}
+				} catch(_) {}
+			}, 50);
+		}
+	})();
 </script>
 
 @php
