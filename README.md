@@ -20,6 +20,29 @@ composer require sanderdewijs/lara-livewire-maps
 The component automatically loads the Google Maps JS API with the drawing and geometry libraries and the MarkerClusterer library via CDN.
 
 
+## Configuration
+You can configure package-wide defaults via `config/livewire-maps.php`. To publish the config file into your app, run:
+
+```bash
+php artisan vendor:publish --provider="Sdw\\LivewireMaps\\LivewireMapServiceProvider" --tag="livewire-maps-config"
+```
+
+You can also use the generic config tag:
+
+```bash
+php artisan vendor:publish --tag=config --provider="Sdw\\LivewireMaps\\LivewireMapServiceProvider"
+```
+
+After publishing, edit `config/livewire-maps.php`. Supported keys:
+- api_key (or set `GOOGLE_MAPS_API_KEY` in your `.env`)
+- default_zoom
+- default_center.lat, default_center.lng
+- default_width, default_height
+- use_clusters
+- map_options
+- cluster_options
+
+
 ## Quick Start
 Render a map with a couple of markers:
 
