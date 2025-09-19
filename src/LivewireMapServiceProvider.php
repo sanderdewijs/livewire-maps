@@ -2,6 +2,7 @@
 
 namespace Sdw\LivewireMaps;
 
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\ServiceProvider;
 
 class LivewireMapServiceProvider extends ServiceProvider
@@ -20,6 +21,9 @@ class LivewireMapServiceProvider extends ServiceProvider
         // Load package views
         $this->loadViewsFrom(__DIR__ . '/../resources/views', 'livewire-maps');
 
+        // Register Blade include directive for scripts: @LwMapsScripts
+        Blade::include('livewire-maps::scripts', 'LwMapsScripts');
+
         // Allow users to publish the config file
         $this->publishes([
             __DIR__ . '/../config/livewire-maps.php' => config_path('livewire-maps.php'),
@@ -29,6 +33,15 @@ class LivewireMapServiceProvider extends ServiceProvider
         $this->publishes([
             __DIR__ . '/../config/livewire-maps.php' => config_path('livewire-maps.php'),
         ], 'config');
+
+        // Publish JS assets to public/vendor
+        $this->publishes([
+            __DIR__ . '/../resources/js/livewire-maps.js' => public_path('vendor/livewire-maps/livewire-maps.js'),
+        ], 'livewire-maps-assets');
+        // Allow publishing with generic 'public' tag as well
+        $this->publishes([
+            __DIR__ . '/../resources/js/livewire-maps.js' => public_path('vendor/livewire-maps/livewire-maps.js'),
+        ], 'public');
 
         // Defer Livewire component registration until all providers are booted
         $this->app->booted(function () {

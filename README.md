@@ -11,13 +11,41 @@ Install via Composer:
 composer require sanderdewijs/lara-livewire-maps
 ```
 
+### Add the scripts directive to your layout (important)
+This package ships a Blade include directive that loads the required JavaScript for the map and (optionally) the Google Maps API. Place the directive once per page, ideally immediately after the opening <body> tag in your main layout.
+
+Example layout:
+
+```blade
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>My App</title>
+    @vite(['resources/js/app.js'])
+    @livewireStyles
+</head>
+<body>
+    @LwMapsScripts
+
+    {{ $slot ?? '' }}
+
+    @livewireScripts
+</body>
+</html>
+```
+
+Notes:
+- Use the directive only once per page.
+- By default, the directive will load the package JS from public/vendor (see Asset loading below) and will also include the Google Maps JS API when you provide an API key.
+
 
 ## Requirements
 - Google Maps JavaScript API key.
     - Enable the Maps JavaScript API in Google Cloud.
     - Provide the API key to the component (see Properties below) or configure it in your app config if supported.
 
-The component automatically loads the Google Maps JS API with the drawing and geometry libraries and the MarkerClusterer library via CDN.
+The @LwMapsScripts directive loads the Google Maps JS API (drawing and geometry libraries) and the MarkerClusterer library. You can control this behavior via config (see below).
 
 
 ## Configuration
@@ -35,12 +63,68 @@ php artisan vendor:publish --tag=config --provider="Sdw\\LivewireMaps\\LivewireM
 
 After publishing, edit `config/livewire-maps.php`. Supported keys:
 - api_key (or set `GOOGLE_MAPS_API_KEY` in your `.env`)
+- google_maps_key (preferred; or set `LW_MAPS_GOOGLE_KEY` in your `.env`)
+- load_google_maps (bool, default true) — set false if you load Google Maps yourself
+- google_maps_libraries (default `drawing,geometry`)
+- locale (Google Maps UI language, e.g. `nl`, `en`)
 - default_zoom
 - default_center.lat, default_center.lng
 - default_width, default_height
 - use_clusters
 - map_options
 - cluster_options
+- asset_driver: `vite` | `mix` | `cdn` | `file` | `none` (default `file`)
+- cdn_url (when asset_driver = `cdn`)
+- vite_entry (when asset_driver = `vite`, default `resources/js/livewire-maps.js`)
+- mix_path (when asset_driver = `mix`, default `/vendor/livewire-maps/livewire-maps.js`)
+
+### Asset loading options (Vite, Mix, CDN, file)
+By default, `asset_driver` is `file`, which expects the package JS to be published to `public/vendor`. The `@LwMapsScripts` directive will then include it automatically.
+
+- File (default, no bundler):
+  1) Publish the JS once:
+  ```bash
+  php artisan vendor:publish --provider="Sdw\\LivewireMaps\\LivewireMapServiceProvider" --tag=livewire-maps-assets
+  # or
+  php artisan vendor:publish --provider="Sdw\\LivewireMaps\\LivewireMapServiceProvider" --tag=public
+  ```
+  2) Keep `asset_driver` as `file` (default). The directive will include `/vendor/livewire-maps/livewire-maps.js`.
+
+- Vite:
+  1) In `.env` or config, set `LW_MAPS_ASSET_DRIVER=vite` (or `asset_driver` => 'vite').
+  2) Ensure you have a Vite entry that imports the package script. For example, create `resources/js/livewire-maps.js` in your app with:
+  ```js
+  // resources/js/livewire-maps.js
+  import '../../vendor/sanderdewijs/lara-livewire-maps/resources/js/livewire-maps.js';
+  ```
+  3) Add it to your Vite inputs (vite.config.js):
+  ```js
+  laravel({
+    input: ['resources/js/app.js', 'resources/js/livewire-maps.js'],
+    refresh: true,
+  })
+  ```
+  4) Optionally adjust `vite_entry` in `config/livewire-maps.php` if you use a different path.
+
+- Laravel Mix:
+  1) In `.env` or config, set `LW_MAPS_ASSET_DRIVER=mix` (or `asset_driver` => 'mix').
+  2) Create `resources/js/livewire-maps.js` that imports the package script (same import as Vite example).
+  3) In `webpack.mix.js`:
+  ```js
+  mix.js('resources/js/livewire-maps.js', 'public/vendor/livewire-maps').version();
+  ```
+  4) Ensure `mix_path` in config matches `/vendor/livewire-maps/livewire-maps.js`.
+
+- CDN:
+  1) Host the compiled package JS yourself and set `asset_driver` to `cdn`.
+  2) Set `cdn_url` to the full URL.
+
+- None (advanced):
+  - Set `asset_driver` to `none` if you want to fully control script loading yourself. In this mode, `@LwMapsScripts` will not include any JS; you must load both the package JS and (optionally) the Google Maps API on your own.
+
+Google Maps loading:
+- The directive loads Google Maps when `load_google_maps` is true and a key is present (`google_maps_key` or `api_key`).
+- You can disable it by setting `load_google_maps=false` if you prefer to include the Google script tag elsewhere.
 
 
 ## Quick Start

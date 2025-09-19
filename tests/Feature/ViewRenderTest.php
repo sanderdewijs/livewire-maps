@@ -10,7 +10,10 @@ it('renders the map blade template content', function () {
     $html = str_replace('id="{{ $domId }}"', 'id="test-map-123"', $template);
 
     expect($html)->toContain('id="test-map-123"');
-    expect($html)->toContain('lw-google-maps-script');
+    // Minimal inline script should call the queueInit API
+    expect($html)->toContain('window.__LW_MAPS.queueInit');
+    // Container should be marked for resize hook
+    expect($html)->toContain('data-lw-map');
 });
 
 it('renders the map container with id, wire:ignore, and size styles', function () {
@@ -26,5 +29,6 @@ it('renders the map container with id, wire:ignore, and size styles', function (
     // We expect the opening container div to include our simulated values
     expect($html)->toContain('<div id="test-map-456"');
     expect($html)->toContain('wire:ignore');
+    expect($html)->toContain('data-lw-map');
     expect($html)->toContain('style="width: 600px; height: 300px;"');
 });

@@ -168,6 +168,10 @@ class LivewireMap extends Component
             'normalizedMarkers' => $this->markers,
             'domId' => $this->domId,
             'drawType' => $this->drawType,
+            // Provide minimal init values expected by the new external JS
+            'lat' => $this->centerLat,
+            'lng' => $this->centerLng,
+            'zoom' => $this->zoom,
         ]);
     }
 }
