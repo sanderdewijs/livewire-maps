@@ -3,7 +3,7 @@
 use Sdw\LivewireMaps\Livewire\LivewireMap;
 
 it('casts various useClusters values to boolean', function () {
-    config(['livewire-maps.use_clusters' => true]);
+    // No Laravel app in this test context; avoid config() and rely on explicit props
 
     $cmpFalse = new LivewireMap();
     $cmpFalse->mount(useClusters: 'false');

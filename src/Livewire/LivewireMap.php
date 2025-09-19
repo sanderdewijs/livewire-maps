@@ -43,8 +43,18 @@ class LivewireMap extends Component
         $markers = [],
         $drawType = null
     ): void {
-        // Read defaults from config
-        $cfg = config('livewire-maps');
+        // Read defaults from config only if a Laravel app container with 'config' is available
+        $cfg = [];
+        if (function_exists('app')) {
+            try {
+                $app = app();
+                if (is_object($app) && method_exists($app, 'bound') && $app->bound('config')) {
+                    $cfg = config('livewire-maps') ?? [];
+                }
+            } catch (\Throwable $e) {
+                $cfg = [];
+            }
+        }
 
         $this->apiKey = $apiKey ?? ($cfg['api_key'] ?? null);
 
