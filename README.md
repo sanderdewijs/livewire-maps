@@ -26,11 +26,10 @@ Example layout:
     @livewireStyles
 </head>
 <body>
-    @LwMapsScripts
-
     {{ $slot ?? '' }}
 
     @livewireScripts
+    @LwMapsScripts
 </body>
 </html>
 ```
