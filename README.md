@@ -88,6 +88,15 @@ By default, `asset_driver` is `file`, which expects the package JS to be publish
   php artisan vendor:publish --provider="Sdw\\LivewireMaps\\LivewireMapServiceProvider" --tag=public
   ```
   2) Keep `asset_driver` as `file` (default). The directive will include `/vendor/livewire-maps/livewire-maps.js`.
+  3) Re-publish or overwrite later using the dedicated command:
+  ```bash
+  # publish (creates the directory if missing)
+  php artisan livewire-maps:publish-assets
+  
+  # force overwrite if the file already exists
+  php artisan livewire-maps:publish-assets --force
+  ```
+  This command copies the package asset from `resources/js/livewire-maps.js` to `public/vendor/livewire-maps/livewire-maps.js`.
 
 - Vite:
   1) In `.env` or config, set `LW_MAPS_ASSET_DRIVER=vite` (or `asset_driver` => 'vite').
