@@ -195,6 +195,8 @@
     if (document.readyState === 'complete') setTimeout(processQueue, 1000);
     else window.addEventListener('load', () => setTimeout(processQueue, 0), { once: true });
   };
+  LW.queueInit.__isShim = false;
+  try { LW.__queueInitShim = null; } catch (_) {}
 
   // Listen for server → browser updates from Livewire PHP
   try {
@@ -229,4 +231,6 @@
       });
     }
   } catch (_) {}
+  // Attempt to process any queued maps that were pushed before this script executed
+  try { processQueue(); } catch (_) {}
 })();
