@@ -93,21 +93,30 @@ class LivewireMap extends Component
         // Optionally allow toggling clusters via event
         $this->useClusters = (bool) $useClusters;
         $this->clusterOptions = $clusterOptions;
-		
+
 		if($center) {
 			$this->centerLat = $center['lat'];
 			$this->centerLng = $center['lng'];
 		}
-		// Dispatch an update back to the frontend via Livewire bus with normalized markers
+  // Dispatch an update back to the frontend via Livewire bus with normalized markers
         // Use an internal event name so external listeners can still use 'lw-map:update' for input
-        $this->dispatch('lw-map-internal-update',
-            id: $this->domId,
-            markers: $this->markers,
-            useClusters: $this->useClusters,
-            clusterOptions:  $this->clusterOptions,
-	        centerLat: $this->centerLat,
-	        centerLng: $this->centerLng,
-        );
+        if ($center) {
+            $this->dispatch('lw-map-internal-update',
+                id: $this->domId,
+                markers: $this->markers,
+                useClusters: $this->useClusters,
+                clusterOptions:  $this->clusterOptions,
+                centerLat: $this->centerLat,
+                centerLng: $this->centerLng,
+            );
+        } else {
+            $this->dispatch('lw-map-internal-update',
+                id: $this->domId,
+                markers: $this->markers,
+                useClusters: $this->useClusters,
+                clusterOptions:  $this->clusterOptions,
+            );
+        }
     }
 
     protected function toBoolean($value, bool $default): bool

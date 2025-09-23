@@ -43,6 +43,13 @@ class LivewireMapServiceProvider extends ServiceProvider
             __DIR__ . '/../resources/js/livewire-maps.js' => public_path('vendor/livewire-maps/livewire-maps.js'),
         ], 'public');
 
+        // Register console commands (including an overwrite publish command)
+        if ($this->app->runningInConsole()) {
+            $this->commands([
+                \Sdw\LivewireMaps\Console\Commands\PublishAssetsCommand::class,
+            ]);
+        }
+
         // Defer Livewire component registration until all providers are booted
         $this->app->booted(function () {
             if (class_exists('Livewire\\Livewire') && $this->app->bound('livewire')) {
