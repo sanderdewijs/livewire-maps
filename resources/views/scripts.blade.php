@@ -56,6 +56,8 @@
     $cdnUrl = $cfg['cdn_url'] ?? null;
     $viteEntry = $cfg['vite_entry'] ?? 'resources/js/livewire-maps.js';
     $mixPath = $cfg['mix_path'] ?? '/vendor/livewire-maps/livewire-maps.js';
+    $clustererSrc = 'https://cdn.jsdelivr.net/npm/@googlemaps/markerclusterer/dist/index.min.js';
+    $loadsClusterer = $assetDriver !== 'none';
 @endphp
 
 {{-- Optionally include Google Maps API --}}
@@ -69,6 +71,9 @@
 @endif
 
 {{-- Load package JS based on configured asset driver --}}
+@if($loadsClusterer)
+    <script src="{{ $clustererSrc }}"></script>
+@endif
 @switch($assetDriver)
     @case('vite')
         @vite($viteEntry)
