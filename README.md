@@ -70,8 +70,11 @@ After publishing, edit `config/livewire-maps.php`. Supported keys:
 - default_center.lat, default_center.lng
 - default_width, default_height
 - use_clusters
+- auto_fit_bounds (bool, default true; or set `LW_MAPS_AUTO_FIT_BOUNDS=false` to disable)
 - map_options
 - cluster_options
+- init_event (string|null): when set, the map waits for this browser event before initializing
+- maps_placeholder_img: string|null — optional background image URL used as a placeholder before the map initializes. Use in combination with the init_event property to display a placeholder when map initialization is deferred.
 - asset_driver: `vite` | `mix` | `cdn` | `file` | `none` (default `file`)
 - cdn_url (when asset_driver = `cdn`)
 - vite_entry (when asset_driver = `vite`, default `resources/js/livewire-maps.js`)
@@ -188,6 +191,65 @@ All properties are optional unless noted. Use as Livewire props on the component
     - List of marker definitions. See Marker shape below.
 - drawType: 'circle'|'polygon'|null
     - If provided, the map immediately enters draw mode for that shape.
+- initEvent: string|null
+    - Optional. When set, the map will wait for this browser event to be dispatched before initializing. Overrides the `init_event` config if both are set.
+- mapsPlaceholderImg: string|null
+    - Optional URL. When set (via prop or config `maps_placeholder_img`), shows a background image covering the container until the map initializes.
+
+### Delayed initialization via custom event
+Sometimes you want the map to initialize only after other backend work has completed. You can configure a custom event name globally or per component and dispatch it when you're ready.
+
+- Globally (config): set `init_event` in `config/livewire-maps.php` or `.env` `LW_MAPS_INIT_EVENT=my-app:maps:init`
+- Per component: pass the prop
+  ```blade
+  <livewire:livewire-map :init-event="'my-app:maps:init'" />
+  ```
+
+When you're ready to initialize (e.g., after backend work completes), dispatch a Livewire/Alpine event with the same name as `init_event`.
+
+Frontend (Alpine/Livewire in your Blade):
+```html
+<!-- Ensure your map component has initEvent or config init_event set to 'my-app:maps:init' -->
+<button type="button" x-on:click="$dispatch('my-app:maps:init')">Init map</button>
+```
+
+You can include overrides in the payload (all keys optional). These will be shallow-merged into the initial config:
+```html
+<button type="button"
+        x-on:click="$dispatch('my-app:maps:init', {
+            lat: 52.09,
+            lng: 5.12,
+            zoom: 8,
+            markers: [ { id: 1, lat: 52.09, lng: 5.12 } ],
+            useClusters: true,
+            clusterOptions: { maxZoom: 14 },
+            mapOptions: { disableDefaultUI: true },
+            drawType: 'circle',
+            autoFitBounds: false,
+        })">
+    Init with overrides
+</button>
+```
+
+Backend (Livewire PHP component):
+```php
+// From your Livewire component when data is ready
+$this->dispatch('my-app:maps:init',
+    lat: 52.09,
+    lng: 5.12,
+    zoom: 8,
+    markers: [ [ 'id' => 1, 'lat' => 52.09, 'lng' => 5.12 ] ],
+    useClusters: true,
+    clusterOptions: [ 'maxZoom' => 14 ],
+    mapOptions: [ 'disableDefaultUI' => true ],
+    drawType: 'circle',
+    autoFitBounds: false,
+);
+```
+
+Notes:
+- If `init_event` is null (default), the map initializes immediately on render (current behavior).
+- If both config and prop are set, the prop takes precedence for that component instance.
 
 ### Marker shape
 You can provide any of the following forms:

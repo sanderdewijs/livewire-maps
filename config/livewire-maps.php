@@ -17,8 +17,16 @@ return [
     'default_width' => '100%',
     'default_height' => '400px',
 
+    // Optional placeholder image to show before the map is initialized
+    // Provide a full URL or path resolvable by the browser. Set null to disable.
+    'maps_placeholder_img' => env('LW_MAPS_PLACEHOLDER_IMG', null),
+
     // Whether to use marker clustering by default
     'use_clusters' => false,
+
+    // Automatically fit the map to the bounds of all provided markers (when any markers exist)
+    // Set to false to disable auto-fit and keep center/zoom behavior.
+    'auto_fit_bounds' => env('LW_MAPS_AUTO_FIT_BOUNDS', true),
 
     // Default options passed to the Google Maps Map instance
     'map_options' => [
@@ -29,6 +37,11 @@ return [
     'cluster_options' => [
         // e.g. 'maxZoom' => 14,
     ],
+
+    // Optional: Defer map initialization until a custom browser event fires.
+    // Provide a string event name (e.g. 'my-app:maps:init') or leave null for immediate init.
+    // You can also override per component via the mount() parameter $initEvent.
+    'init_event' => env('LW_MAPS_INIT_EVENT', null),
 
     // --- New options for robust JS loading ---
     // How to load the package JS: 'vite' | 'mix' | 'cdn' | 'file' | 'none'

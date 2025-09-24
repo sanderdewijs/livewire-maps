@@ -83,6 +83,23 @@
 		}
 	}
 
+	function fitToMarkers(inst) {
+		if (!inst || !inst.map || !window.google || !window.google.maps) return;
+		const ms = Array.isArray(inst.markers) ? inst.markers : [];
+		if (ms.length === 0) return;
+		try {
+			const bounds = new google.maps.LatLngBounds();
+			let count = 0;
+			ms.forEach(mk => {
+				try {
+					const pos = typeof mk.getPosition === 'function' ? mk.getPosition() : null;
+					if (pos) { bounds.extend(pos); count++; }
+				} catch (_) {}
+			});
+			if (count > 0) { inst.map.fitBounds(bounds); }
+		} catch (_) {}
+	}
+
 	function setupDrawing(inst, drawType) {
 		if (!inst || !inst.map || !drawType) return;
 		if (!google.maps.drawing || !google.maps.drawing.DrawingManager) return;
@@ -161,6 +178,18 @@
 
 		const map = new google.maps.Map(el, { center, zoom: z, ...mapOptions });
 
+		// Remove placeholder background if it was set via Blade
+		try {
+			if (el.hasAttribute('data-lw-placeholder')) {
+				el.style.backgroundImage = 'none';
+				el.style.backgroundSize = '';
+				el.style.backgroundPosition = '';
+				el.style.backgroundRepeat = '';
+				el.removeAttribute('data-lw-placeholder');
+			}
+		} catch (_) {}
+
+		const afb = (cfg && Object.prototype.hasOwnProperty.call(cfg, 'autoFitBounds')) ? !!cfg.autoFitBounds : true;
 		const inst = {
 			id: domId,
 			map,
@@ -169,6 +198,7 @@
 			infoWindow: null,
 			drawingManager: null,
 			drawOverlay: null,
+			autoFitBounds: afb,
 		};
 
 		LW.instances[domId] = inst;
@@ -176,6 +206,9 @@
 		// Initial markers/clustering
 		if (Array.isArray(cfg && cfg.markers)) {
 			setMarkers(inst, cfg.markers, !!cfg.useClusters, cfg.clusterOptions || {});
+			if (inst.autoFitBounds && inst.markers && inst.markers.length > 0) {
+				fitToMarkers(inst);
+			}
 		}
 
 		// Optional drawing tools
@@ -221,7 +254,17 @@
 			if (Array.isArray(d.markers)) {
 				setMarkers(inst, d.markers, !!d.useClusters, d.clusterOptions || {});
 			}
-			if (typeof d.centerLat === 'number' && typeof d.centerLng === 'number') {
+
+			// Update autoFit flag if explicitly provided in the payload; otherwise keep instance default
+			if (typeof d.autoFitBounds === 'boolean') {
+				inst.autoFitBounds = !!d.autoFitBounds;
+			}
+
+			const hasMarkers = Array.isArray(d.markers) ? d.markers.length > 0 : (Array.isArray(inst.markers) && inst.markers.length > 0);
+
+			if (inst.autoFitBounds && hasMarkers) {
+				fitToMarkers(inst);
+			} else if (typeof d.centerLat === 'number' && typeof d.centerLng === 'number') {
 				try { inst.map.setCenter({ lat: d.centerLat, lng: d.centerLng }); } catch (_) {}
 			}
 		});
@@ -237,6 +280,12 @@
 					if (inst && el.offsetParent !== null && window.google && window.google.maps) {
 						try { google.maps.event.trigger(inst.map, 'resize'); } catch (_) {}
 						try { inst.map.setCenter(inst.map.getCenter()); } catch (_) {}
+						// If auto-fit is enabled and we have markers, re-fit after becoming visible
+						try {
+							if (inst.autoFitBounds && Array.isArray(inst.markers) && inst.markers.length > 0) {
+								fitToMarkers(inst);
+							}
+						} catch (_) {}
 					}
 				});
 			});

@@ -18,6 +18,8 @@ class LivewireMap extends Component
     public $markers = [];
     public $domId;
     public $drawType = null; // 'circle' | 'polygon' | null
+    public $initEvent = null; // optional custom browser event name to trigger init
+    public $mapsPlaceholderImg = null; // optional placeholder background image URL
 
     /**
      * Listen for map update events from Livewire.
@@ -41,7 +43,9 @@ class LivewireMap extends Component
         $mapOptions = null,
         $clusterOptions = null,
         $markers = [],
-        $drawType = null
+        $drawType = null,
+        $initEvent = null,
+        $mapsPlaceholderImg = null
     ): void {
         // Read defaults from config only if a Laravel app container with 'config' is available
         $cfg = [];
@@ -69,6 +73,9 @@ class LivewireMap extends Component
         $this->width = $width ?? ($cfg['default_width'] ?? '100%');
         $this->height = $height ?? ($cfg['default_height'] ?? '400px');
 
+        // Placeholder image (per-component override preferred, otherwise config default)
+        $this->mapsPlaceholderImg = $mapsPlaceholderImg ?? ($cfg['maps_placeholder_img'] ?? null);
+
         $defaultUseClusters = (bool) ($cfg['use_clusters'] ?? false);
         $this->useClusters = $this->toBoolean($useClusters, $defaultUseClusters);
 
@@ -77,6 +84,9 @@ class LivewireMap extends Component
 
         $this->markers = is_array($markers) ? $this->normalizeMarkers($markers) : [];
         $this->drawType = $drawType; // can be null, 'circle', or 'polygon'
+
+        // Init event: per-component override first, fallback to config
+        $this->initEvent = $initEvent ?? ($cfg['init_event'] ?? null);
 
         // Prefer Livewire component id if available for a stable DOM id across re-renders
         $this->domId = 'lw-map-' . (property_exists($this, 'id') ? $this->id : substr(md5(spl_object_hash($this)), 0, 8));
@@ -181,6 +191,7 @@ class LivewireMap extends Component
             'lat' => $this->centerLat,
             'lng' => $this->centerLng,
             'zoom' => $this->zoom,
+            'mapsPlaceholderImg' => $this->mapsPlaceholderImg,
         ]);
     }
 }
