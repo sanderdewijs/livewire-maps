@@ -32,6 +32,27 @@
 		if (inst.infoWindow) { try { inst.infoWindow.close(); } catch (_) {} }
 	}
 
+	function fitToMarkers(inst, markers) {
+		try {
+			if (!inst || !inst.map || !Array.isArray(markers) || markers.length === 0) { return; }
+			if (markers.length === 1) {
+				const pos = markers[0] && typeof markers[0].getPosition === 'function' ? markers[0].getPosition() : null;
+				if (pos) {
+					inst.map.setCenter(pos);
+					return;
+				}
+			}
+			const bounds = new google.maps.LatLngBounds();
+			markers.forEach(mk => {
+				try {
+					const p = mk.getPosition ? mk.getPosition() : null;
+					if (p) { bounds.extend(p); }
+				} catch (_) {}
+			});
+			inst.map.fitBounds(bounds);
+		} catch (_) {}
+	}
+
 	function setMarkers(inst, markers, useClusters, clusterOptions) {
 		if (!inst || !inst.map || !Array.isArray(markers)) return;
 		clearMarkers(inst);
@@ -83,28 +104,25 @@
 		}
 	}
 
-	function fitToMarkers(inst) {
-		if (!inst || !inst.map || !window.google || !window.google.maps) return;
-		const ms = Array.isArray(inst.markers) ? inst.markers : [];
-		if (ms.length === 0) return;
-		try {
-			const bounds = new google.maps.LatLngBounds();
-			let count = 0;
-			ms.forEach(mk => {
-				try {
-					const pos = typeof mk.getPosition === 'function' ? mk.getPosition() : null;
-					if (pos) { bounds.extend(pos); count++; }
-				} catch (_) {}
-			});
-			if (count > 0) { inst.map.fitBounds(bounds); }
-		} catch (_) {}
-	}
-
 	function setupDrawing(inst, drawType) {
 		if (!inst || !inst.map || !drawType) return;
 		if (!google.maps.drawing || !google.maps.drawing.DrawingManager) return;
 
-		// Only allow a single overlay at a time
+		// Clean up any previous drawing manager and overlay
+		try {
+			if (inst.drawingManager && typeof inst.drawingManager.setMap === 'function') {
+				inst.drawingManager.setMap(null);
+			}
+		} catch (_) {}
+		inst.drawingManager = null;
+		try {
+			if (inst.drawOverlay && typeof inst.drawOverlay.setMap === 'function') {
+				inst.drawOverlay.setMap(null);
+			}
+		} catch (_) {}
+		inst.drawOverlay = null;
+
+		// Only allow a single overlay at a time after re-init
 		function clearOverlay() {
 			if (inst.drawOverlay) {
 				try { inst.drawOverlay.setMap(null); } catch (_) {}
@@ -178,18 +196,6 @@
 
 		const map = new google.maps.Map(el, { center, zoom: z, ...mapOptions });
 
-		// Remove placeholder background if it was set via Blade
-		try {
-			if (el.hasAttribute('data-lw-placeholder')) {
-				el.style.backgroundImage = 'none';
-				el.style.backgroundSize = '';
-				el.style.backgroundPosition = '';
-				el.style.backgroundRepeat = '';
-				el.removeAttribute('data-lw-placeholder');
-			}
-		} catch (_) {}
-
-		const afb = (cfg && Object.prototype.hasOwnProperty.call(cfg, 'autoFitBounds')) ? !!cfg.autoFitBounds : true;
 		const inst = {
 			id: domId,
 			map,
@@ -198,7 +204,6 @@
 			infoWindow: null,
 			drawingManager: null,
 			drawOverlay: null,
-			autoFitBounds: afb,
 		};
 
 		LW.instances[domId] = inst;
@@ -206,9 +211,6 @@
 		// Initial markers/clustering
 		if (Array.isArray(cfg && cfg.markers)) {
 			setMarkers(inst, cfg.markers, !!cfg.useClusters, cfg.clusterOptions || {});
-			if (inst.autoFitBounds && inst.markers && inst.markers.length > 0) {
-				fitToMarkers(inst);
-			}
 		}
 
 		// Optional drawing tools
@@ -254,21 +256,36 @@
 			if (Array.isArray(d.markers)) {
 				setMarkers(inst, d.markers, !!d.useClusters, d.clusterOptions || {});
 			}
-
-			// Update autoFit flag if explicitly provided in the payload; otherwise keep instance default
-			if (typeof d.autoFitBounds === 'boolean') {
-				inst.autoFitBounds = !!d.autoFitBounds;
-			}
-
-			const hasMarkers = Array.isArray(d.markers) ? d.markers.length > 0 : (Array.isArray(inst.markers) && inst.markers.length > 0);
-
-			if (inst.autoFitBounds && hasMarkers) {
-				fitToMarkers(inst);
-			} else if (typeof d.centerLat === 'number' && typeof d.centerLng === 'number') {
+			if (typeof d.centerLat === 'number' && typeof d.centerLng === 'number') {
 				try { inst.map.setCenter({ lat: d.centerLat, lng: d.centerLng }); } catch (_) {}
+			} else if (Array.isArray(d.markers)) {
+				// No explicit center provided: fit viewport to markers
+				fitToMarkers(inst, inst.markers);
 			}
 		});
 	} catch (_) {}
+
+	// Listen for draw mode toggles from Livewire/browser
+	try {
+		window.addEventListener('lw-map:draw', function(e){
+			const d = (e && e.detail) ? e.detail : {};
+			const type = d && Object.prototype.hasOwnProperty.call(d, 'type') ? d.type : null;
+			const targetIds = d && d.id ? [String(d.id)] : Object.keys(LW.instances);
+			targetIds.forEach(function(mapId){
+				const inst = LW.instances[mapId];
+				if (!inst) return;
+				if (!type) {
+					// Exit draw mode: remove manager and overlay
+					try { if (inst.drawingManager && typeof inst.drawingManager.setMap === 'function') { inst.drawingManager.setMap(null); } } catch(_) {}
+					inst.drawingManager = null;
+					try { if (inst.drawOverlay && typeof inst.drawOverlay.setMap === 'function') { inst.drawOverlay.setMap(null); } } catch(_) {}
+					inst.drawOverlay = null;
+				} else {
+					setupDrawing(inst, type);
+				}
+			});
+		});
+	} catch(_) {}
 
 	// Livewire v3 hook: resize visible maps after DOM updates (e.g., wizard steps)
 	try {
@@ -280,12 +297,6 @@
 					if (inst && el.offsetParent !== null && window.google && window.google.maps) {
 						try { google.maps.event.trigger(inst.map, 'resize'); } catch (_) {}
 						try { inst.map.setCenter(inst.map.getCenter()); } catch (_) {}
-						// If auto-fit is enabled and we have markers, re-fit after becoming visible
-						try {
-							if (inst.autoFitBounds && Array.isArray(inst.markers) && inst.markers.length > 0) {
-								fitToMarkers(inst);
-							}
-						} catch (_) {}
 					}
 				});
 			});
