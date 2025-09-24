@@ -251,7 +251,20 @@
 			const id = d.id;
 			if (!id) return;
 			const inst = LW.instances[id];
-			if (!inst) return;
+			if (!inst) {
+				// Instance missing: initialize from DOM attributes and replay once
+				try {
+					const el = document.getElementById(id);
+					if (typeof LW.queueInit === 'function') {
+						const cfg = el ? readCfg(el) : {};
+						LW.queueInit(id, cfg);
+					}
+				} catch (_) {}
+				setTimeout(() => {
+					try { window.dispatchEvent(new CustomEvent('lw-map-internal-update', { detail: d })); } catch (_) {}
+				}, 50);
+				return;
+			}
 
 			if (Array.isArray(d.markers)) {
 				setMarkers(inst, d.markers, !!d.useClusters, d.clusterOptions || {});
@@ -302,6 +315,38 @@
 			});
 		}
 	} catch (_) {}
+	// Auto-discovery: init any not-yet-initialized [data-lw-map] elements
+	function toNum(v, d) { var n = Number(v); return Number.isFinite(n) ? n : d; }
+	function readCfg(el) {
+		return {
+			lat: toNum(el && el.getAttribute ? el.getAttribute('data-lat') : null, 0),
+			lng: toNum(el && el.getAttribute ? el.getAttribute('data-lng') : null, 0),
+			zoom: toNum(el && el.getAttribute ? el.getAttribute('data-zoom') : null, 8),
+			drawType: el && el.getAttribute ? (el.getAttribute('data-draw-type') || null) : null,
+		};
+	}
+	function initMissingMaps() {
+		if (typeof LW.queueInit !== 'function') return;
+		document.querySelectorAll('[data-lw-map]').forEach(function(el){
+			var id = el && el.id ? String(el.id) : null;
+			if (!id) return;
+			if (LW.instances && LW.instances[id]) return;
+			LW.queueInit(id, readCfg(el));
+		});
+	}
+	// Init at DOM ready
+	if (document.readyState === 'complete' || document.readyState === 'interactive') {
+		setTimeout(initMissingMaps, 0);
+	} else {
+		document.addEventListener('DOMContentLoaded', function(){ initMissingMaps(); }, { once: true });
+	}
+	// Re-init after Livewire DOM morphs (tabs/wizards/modals)
+	try {
+		if (window.Livewire && typeof Livewire.hook === 'function') {
+			Livewire.hook('message.processed', function(){ initMissingMaps(); });
+		}
+	} catch (_) {}
+
 	// Attempt to process any queued maps that were pushed before this script executed
 	try { processQueue(); } catch (_) {}
 })();

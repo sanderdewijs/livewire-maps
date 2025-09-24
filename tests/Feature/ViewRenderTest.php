@@ -10,10 +10,11 @@ it('renders the map blade template content', function () {
     $html = str_replace('id="{{ $domId }}"', 'id="test-map-123"', $template);
 
     expect($html)->toContain('id="test-map-123"');
-    // Minimal inline script should call the queueInit API
-    expect($html)->toContain('window.__LW_MAPS.queueInit');
-    // Container should be marked for resize hook
+    // Container should be marked for discovery with data attributes (no inline init)
     expect($html)->toContain('data-lw-map');
+    expect($html)->toContain('data-lat="');
+    expect($html)->toContain('data-lng="');
+    expect($html)->toContain('data-zoom="');
 });
 
 it('renders the map container with id, wire:ignore, and size styles', function () {
