@@ -266,13 +266,46 @@
 				return;
 			}
 
+			// Update markers (and cluster state) if provided
+			let markersUpdated = false;
 			if (Array.isArray(d.markers)) {
 				setMarkers(inst, d.markers, !!d.useClusters, d.clusterOptions || {});
+				markersUpdated = true;
 			}
-			if (typeof d.centerLat === 'number' && typeof d.centerLng === 'number') {
+
+			// Update zoom if provided
+			if (typeof d.zoom === 'number' && isFinite(d.zoom)) {
+				try { inst.map.setZoom(Number(d.zoom)); } catch (_) {}
+			}
+
+			// Update draw type if explicitly provided (allow null to clear)
+			if (Object.prototype.hasOwnProperty.call(d, 'drawType')) {
+				if (d.drawType) {
+					setupDrawing(inst, d.drawType);
+				} else {
+					// Clear draw mode and any existing overlay
+					try { if (inst.drawingManager && typeof inst.drawingManager.setMap === 'function') { inst.drawingManager.setMap(null); } } catch (_) {}
+					inst.drawingManager = null;
+					try { if (inst.drawOverlay && typeof inst.drawOverlay.setMap === 'function') { inst.drawOverlay.setMap(null); } } catch (_) {}
+					inst.drawOverlay = null;
+				}
+			}
+
+			// Update center if provided
+			const hasCenter = (typeof d.centerLat === 'number' && typeof d.centerLng === 'number');
+			if (hasCenter) {
 				try { inst.map.setCenter({ lat: d.centerLat, lng: d.centerLng }); } catch (_) {}
-			} else if (Array.isArray(d.markers)) {
-				// No explicit center provided: fit viewport to markers
+			}
+
+			// Handle autoFitBounds with precedence:
+			// - If autoFitBounds is explicitly provided: when true, fit to markers; when false, do nothing.
+			// - If not provided: preserve previous behavior (fit when markers updated and no explicit center).
+			if (Object.prototype.hasOwnProperty.call(d, 'autoFitBounds')) {
+				if (d.autoFitBounds) {
+					fitToMarkers(inst, inst.markers);
+				}
+			} else if (!hasCenter && markersUpdated) {
+				// No explicit center and markers changed: fit viewport to markers (legacy behavior)
 				fitToMarkers(inst, inst.markers);
 			}
 		});
