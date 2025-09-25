@@ -215,6 +215,12 @@ class LivewireMap extends Component
             'lng' => $this->centerLng,
             'zoom' => $this->zoom,
             'mapsPlaceholderImg' => $this->mapsPlaceholderImg,
+            // Expose additional options to the Blade view for data-attributes
+            'useClusters' => $this->useClusters,
+            'clusterOptions' => $this->clusterOptions,
+            'mapOptions' => $this->mapOptions,
+            'width' => $this->width,
+            'height' => $this->height,
         ]);
     }
 }

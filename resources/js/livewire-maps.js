@@ -350,12 +350,31 @@
 	} catch (_) {}
 	// Auto-discovery: init any not-yet-initialized [data-lw-map] elements
 	function toNum(v, d) { var n = Number(v); return Number.isFinite(n) ? n : d; }
+	function toBool(v, d) {
+		if (typeof v === 'boolean') return v;
+		if (v == null) return d;
+		var s = String(v).toLowerCase();
+		if (s === '1' || s === 'true' || s === 'yes') return true;
+		if (s === '0' || s === 'false' || s === 'no') return false;
+		return d;
+	}
+	function readJsonAttr(el, name, fallback) {
+		try {
+			var raw = el && el.getAttribute ? el.getAttribute(name) : null;
+			if (!raw) return fallback;
+			return JSON.parse(raw);
+		} catch (_) { return fallback; }
+	}
 	function readCfg(el) {
 		return {
 			lat: toNum(el && el.getAttribute ? el.getAttribute('data-lat') : null, 0),
 			lng: toNum(el && el.getAttribute ? el.getAttribute('data-lng') : null, 0),
 			zoom: toNum(el && el.getAttribute ? el.getAttribute('data-zoom') : null, 8),
 			drawType: el && el.getAttribute ? (el.getAttribute('data-draw-type') || null) : null,
+			useClusters: toBool(el && el.getAttribute ? el.getAttribute('data-use-clusters') : null, false),
+			clusterOptions: readJsonAttr(el, 'data-cluster-options', {}),
+			mapOptions: readJsonAttr(el, 'data-map-options', {}),
+			markers: readJsonAttr(el, 'data-markers', []),
 		};
 	}
 	function initMissingMaps() {
