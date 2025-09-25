@@ -173,9 +173,9 @@
 				}
 			} catch (_) {}
 
-			// Emit a browser event for app code to consume (and optionally forward to Livewire server)
+			// Emit a Livewire event for app code to consume
 			try {
-				window.dispatchEvent(new CustomEvent('lw-map:draw-complete', { detail: payload }));
+				window.Livewire.dispatch('lw-map:draw-complete', {payload: payload});
 			} catch (_) {}
 
 		});

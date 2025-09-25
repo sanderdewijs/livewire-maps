@@ -275,10 +275,7 @@ When the user completes the shape, the component computes which markers fall ins
 
 
 ## Events and Listeners (advanced/optional)
-Most users can stick to Livewire dispatches from PHP (recommended). The browser/window events below are optional for advanced integrations or when you need direct JS hooks. The component communicates via three channels:
-- DOM element events (dispatched/bubbled from the map element)
-- Window custom events
-- Livewire client bus (window.Livewire or window.livewire)
+This package initially had support for custom browser events, but this will change to only Livewire event support for simplicity.
 
 ### Map is ready
 - Name: lw-map:ready
@@ -354,31 +351,27 @@ $this->dispatch('lw-map:draw', type: null);
 ```
 
 ### Selection complete
-Dispatched after the user completes a shape. Emitted on the element, window, and Livewire client bus.
+Dispatched after the user completes a shape. Emitted on the Livewire client bus.
 
-- Name: lw-map:selection-complete
-- Payload:
+- Name: lw-map:draw-complete (Livewire event)
+- Payload object shape:
     - id: string (map instance DOM id)
     - type: 'circle' | 'polygon'
-    - markers: array of the provided marker objects that are inside the shape
-    - center?: { lat: number, lng: number }
-    - bounds?: { north: number, east: number, south: number, west: number }
-    - radius?: number (meters, present when type === 'circle' and no markers are inside)
-    - polygonPath?: string (toString() of polygon.getPath().getArray(), present when type === 'polygon' and no markers are inside)
+    - circle?: { center: { lat: number, lng: number }, radius: number }
+    - polygon?: { path: Array<{ lat: number, lng: number }> }
 
-Example listener:
+Example listener (Livewire v3 client bus):
 ```js
-window.addEventListener('lw-map:selection-complete', (e) => {
-  const payload = e.detail;
-  console.log('Selection complete:', payload);
+Livewire.on('lw-map:draw-complete', ({ payload }) => {
+  console.log('Draw complete:', payload);
 
-  // Example: when no markers selected
-  if ((payload.markers || []).length === 0) {
-    if (payload.type === 'circle') {
-      console.log('Circle center:', payload.center, 'radius(m):', payload.radius);
-    } else if (payload.type === 'polygon') {
-      console.log('Polygon path:', payload.polygonPath);
-    }
+  if (payload.type === 'circle' && payload.circle) {
+    const { center, radius } = payload.circle;
+    console.log('Circle center:', center, 'radius(m):', radius);
+  }
+
+  if (payload.type === 'polygon' && payload.polygon) {
+    console.log('Polygon path:', payload.polygon.path);
   }
 });
 ```
