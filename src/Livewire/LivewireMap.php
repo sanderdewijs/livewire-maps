@@ -95,7 +95,7 @@ class LivewireMap extends Component
     /**
      * Normalize and update markers when the map update event is received.
      */
-    public function onMapUpdate(array $markers = [], bool $useClusters = false, array $clusterOptions = [], array $center = []): void
+    public function onMapUpdate(array $markers = [], bool $useClusters = false, array $clusterOptions = [], array $center = [], ?int $zoom = null): void
     {
         //Normalize and update component state
         $this->markers = $this->normalizeMarkers($markers);
@@ -104,27 +104,50 @@ class LivewireMap extends Component
         $this->useClusters = (bool) $useClusters;
         $this->clusterOptions = $clusterOptions;
 
-		if($center) {
-			$this->centerLat = $center['lat'];
-			$this->centerLng = $center['lng'];
-		}
-  // Dispatch an update back to the frontend via Livewire bus with normalized markers
-        // Use an internal event name so external listeners can still use 'lw-map:update' for input
         if ($center) {
+            $this->centerLat = $center['lat'];
+            $this->centerLng = $center['lng'];
+        }
+
+        if (is_int($zoom)) {
+            $this->zoom = $zoom;
+        }
+
+        // Dispatch an update back to the frontend via Livewire bus with normalized markers
+        // Use an internal event name so external listeners can still use 'lw-map:update' for input
+        if ($center && is_int($zoom)) {
             $this->dispatch('lw-map-internal-update',
                 id: $this->domId,
                 markers: $this->markers,
                 useClusters: $this->useClusters,
-                clusterOptions:  $this->clusterOptions,
+                clusterOptions: $this->clusterOptions,
                 centerLat: $this->centerLat,
                 centerLng: $this->centerLng,
+                zoom: $this->zoom,
+            );
+        } elseif ($center) {
+            $this->dispatch('lw-map-internal-update',
+                id: $this->domId,
+                markers: $this->markers,
+                useClusters: $this->useClusters,
+                clusterOptions: $this->clusterOptions,
+                centerLat: $this->centerLat,
+                centerLng: $this->centerLng,
+            );
+        } elseif (is_int($zoom)) {
+            $this->dispatch('lw-map-internal-update',
+                id: $this->domId,
+                markers: $this->markers,
+                useClusters: $this->useClusters,
+                clusterOptions: $this->clusterOptions,
+                zoom: $this->zoom,
             );
         } else {
             $this->dispatch('lw-map-internal-update',
                 id: $this->domId,
                 markers: $this->markers,
                 useClusters: $this->useClusters,
-                clusterOptions:  $this->clusterOptions,
+                clusterOptions: $this->clusterOptions,
             );
         }
     }

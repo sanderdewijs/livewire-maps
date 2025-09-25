@@ -292,7 +292,7 @@ window.addEventListener('lw-map:ready', (e) => {
 
 ### Update markers (and optionally toggle clustering)
 - How to update: dispatch the Livewire event from your PHP component using named arguments (property: value) as supported by Livewire 3.
-- Listener signature on the Livewire component: onMapUpdate(array $markers = [], bool $useClusters = false, array $clusterOptions = [], array $center = [])
+- Listener signature on the Livewire component: onMapUpdate(array $markers = [], bool $useClusters = false, array $clusterOptions = [], array $center = [], ?int $zoom = null)
 - Frontend: the Blade view listens for an internal element event `lw-map-internal-update` which the component emits after normalizing data. You should not dispatch this internal event yourself.
 
 Examples (from a Livewire PHP component):
@@ -481,7 +481,7 @@ class Example extends Component
 
 
 ### Set or update the map center via Livewire
-You can recenter the map by including a center in your Livewire dispatch for 'lw-map:update'. You can pass center as an associative array with lat/lng or as separate centerLat/centerLng values.
+You can recenter the map by including a center in your Livewire dispatch for 'lw-map:update'. Pass the center as an associative array: ['lat' => ..., 'lng' => ...].
 
 Examples:
 
@@ -538,3 +538,20 @@ Every map instance gets a unique DOM id (exposed in events as `id`).
 - Drawing uses Google Maps DrawingManager and Geometry library. The API script is loaded once and shared across instances.
 - The component exposes an element-level `lw-map:ready` event right after initialization so you can capture the map instance if needed.
 - Selection inclusion checks use geometry.spherical distance for circles and geometry.poly.containsLocation for polygons.
+
+
+### Set both center and zoom via Livewire
+You can update the map center and zoom level in a single update from your Livewire component:
+
+```php
+// Update markers (if needed), set center and zoom together
+$this->dispatch('lw-map:update',
+    markers: $markers, // your current markers
+    useClusters: true,
+    clusterOptions: ['maxZoom' => 14],
+    center: ['lat' => 52.0907, 'lng' => 5.1214],
+    zoom: 12,
+);
+```
+
+Note: Always pass center as an associative array with 'lat' and 'lng' keys. The frontend will apply the zoom when provided.
