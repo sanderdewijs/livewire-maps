@@ -266,10 +266,11 @@ Notes:
 
 
 ## Selection Drawing (Circle/Polygon)
-The map supports starting draw mode in two ways:
+The map supports starting draw mode in three ways:
 
 1) Property: pass drawType on first render (see Quick Start).
-2) Event: ask the map to enter draw mode later (see Events below: `lw-map:draw`).
+2) Event via `lw-map:update`: include `drawType: 'circle'|'polygon'` to enable drawing immediately in the same update round-trip.
+3) Event: ask the map to enter draw mode later (see Events below: `lw-map:draw`).
 
 When the user completes the shape, the component computes which markers fall inside and dispatches a `selection-complete` event with results.
 
@@ -292,7 +293,7 @@ window.addEventListener('lw-map:ready', (e) => {
 
 ### Update markers (and optionally toggle clustering)
 - How to update: dispatch the Livewire event from your PHP component using named arguments (property: value) as supported by Livewire 3.
-- Listener signature on the Livewire component: onMapUpdate(array $markers = [], bool $useClusters = false, array $clusterOptions = [], array $center = [], ?int $zoom = null)
+- Listener signature on the Livewire component: onMapUpdate(array $markers = [], bool $useClusters = false, array $clusterOptions = [], array $center = [], ?int $zoom = null, ?string $drawType = null)
 - Frontend: the Blade view listens for an internal element event `lw-map-internal-update` which the component emits after normalizing data. You should not dispatch this internal event yourself.
 
 Examples (from a Livewire PHP component):
@@ -319,6 +320,24 @@ $this->dispatch('lw-map:update', markers: [
 Notes:
 - Marker shapes are normalized server-side (supports `lat`/`lng`, `lat_lng` array, or `lat_lng` string).
 - Do not dispatch `lw-map:update` from the browser; use your Livewire PHP component.
+
+Runtime drawing via lw-map:update (single round-trip):
+- You can pass `drawType: 'circle'|'polygon'` in the same `lw-map:update` call to immediately enable the drawing tools. No separate `lw-map:draw` dispatch is needed.
+- Omit `drawType` to leave the current drawing state unchanged.
+
+```php
+// Update center/zoom and start drawing a circle immediately
+$this->dispatch('lw-map:update',
+    markers: [
+        ['lat' => 52.0907, 'lng' => 5.1214, 'label_content' => 'Utrecht'],
+    ],
+    useClusters: true,
+    clusterOptions: ['maxZoom' => 14],
+    center: ['lat' => 52.1, 'lng' => 5.1],
+    zoom: 14,
+    drawType: 'circle', // NEW: runtime draw activation
+);
+```
 
 ### Enter/exit draw mode
 - Name: lw-map:draw

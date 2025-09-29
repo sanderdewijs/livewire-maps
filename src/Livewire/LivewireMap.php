@@ -95,7 +95,7 @@ class LivewireMap extends Component
     /**
      * Normalize and update markers when the map update event is received.
      */
-    public function onMapUpdate(array $markers = [], bool $useClusters = false, array $clusterOptions = [], array $center = [], ?int $zoom = null): void
+    public function onMapUpdate(array $markers = [], bool $useClusters = false, array $clusterOptions = [], array $center = [], ?int $zoom = null, ?string $drawType = null): void
     {
         //Normalize and update component state
         $this->markers = $this->normalizeMarkers($markers);
@@ -116,39 +116,85 @@ class LivewireMap extends Component
         // Dispatch an update back to the frontend via Livewire bus with normalized markers
         // Use an internal event name so external listeners can still use 'lw-map:update' for input
         if ($center && is_int($zoom)) {
-            $this->dispatch('lw-map-internal-update',
-                id: $this->domId,
-                markers: $this->markers,
-                useClusters: $this->useClusters,
-                clusterOptions: $this->clusterOptions,
-                centerLat: $this->centerLat,
-                centerLng: $this->centerLng,
-                zoom: $this->zoom,
-            );
+            if ($drawType !== null) {
+                $this->dispatch('lw-map-internal-update',
+                    id: $this->domId,
+                    markers: $this->markers,
+                    useClusters: $this->useClusters,
+                    clusterOptions: $this->clusterOptions,
+                    centerLat: $this->centerLat,
+                    centerLng: $this->centerLng,
+                    zoom: $this->zoom,
+                    drawType: $drawType,
+                );
+            } else {
+                $this->dispatch('lw-map-internal-update',
+                    id: $this->domId,
+                    markers: $this->markers,
+                    useClusters: $this->useClusters,
+                    clusterOptions: $this->clusterOptions,
+                    centerLat: $this->centerLat,
+                    centerLng: $this->centerLng,
+                    zoom: $this->zoom,
+                );
+            }
         } elseif ($center) {
-            $this->dispatch('lw-map-internal-update',
-                id: $this->domId,
-                markers: $this->markers,
-                useClusters: $this->useClusters,
-                clusterOptions: $this->clusterOptions,
-                centerLat: $this->centerLat,
-                centerLng: $this->centerLng,
-            );
+            if ($drawType !== null) {
+                $this->dispatch('lw-map-internal-update',
+                    id: $this->domId,
+                    markers: $this->markers,
+                    useClusters: $this->useClusters,
+                    clusterOptions: $this->clusterOptions,
+                    centerLat: $this->centerLat,
+                    centerLng: $this->centerLng,
+                    drawType: $drawType,
+                );
+            } else {
+                $this->dispatch('lw-map-internal-update',
+                    id: $this->domId,
+                    markers: $this->markers,
+                    useClusters: $this->useClusters,
+                    clusterOptions: $this->clusterOptions,
+                    centerLat: $this->centerLat,
+                    centerLng: $this->centerLng,
+                );
+            }
         } elseif (is_int($zoom)) {
-            $this->dispatch('lw-map-internal-update',
-                id: $this->domId,
-                markers: $this->markers,
-                useClusters: $this->useClusters,
-                clusterOptions: $this->clusterOptions,
-                zoom: $this->zoom,
-            );
+            if ($drawType !== null) {
+                $this->dispatch('lw-map-internal-update',
+                    id: $this->domId,
+                    markers: $this->markers,
+                    useClusters: $this->useClusters,
+                    clusterOptions: $this->clusterOptions,
+                    zoom: $this->zoom,
+                    drawType: $drawType,
+                );
+            } else {
+                $this->dispatch('lw-map-internal-update',
+                    id: $this->domId,
+                    markers: $this->markers,
+                    useClusters: $this->useClusters,
+                    clusterOptions: $this->clusterOptions,
+                    zoom: $this->zoom,
+                );
+            }
         } else {
-            $this->dispatch('lw-map-internal-update',
-                id: $this->domId,
-                markers: $this->markers,
-                useClusters: $this->useClusters,
-                clusterOptions: $this->clusterOptions,
-            );
+            if ($drawType !== null) {
+                $this->dispatch('lw-map-internal-update',
+                    id: $this->domId,
+                    markers: $this->markers,
+                    useClusters: $this->useClusters,
+                    clusterOptions: $this->clusterOptions,
+                    drawType: $drawType,
+                );
+            } else {
+                $this->dispatch('lw-map-internal-update',
+                    id: $this->domId,
+                    markers: $this->markers,
+                    useClusters: $this->useClusters,
+                    clusterOptions: $this->clusterOptions,
+                );
+            }
         }
     }
 
