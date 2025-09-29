@@ -99,8 +99,12 @@
 						markers: gMarkers,
 						...((clusterOptions && typeof clusterOptions === 'object') ? clusterOptions : {}),
 					});
+					return; // clustering is active, no need for fallback
 				} catch (_) {}
 			}
+
+			// Fallback: clusterer not available or failed → show markers directly on map
+			try { gMarkers.forEach(mk => mk.setMap(inst.map)); } catch (_) {}
 		}
 	}
 
