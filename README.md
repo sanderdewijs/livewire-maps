@@ -138,6 +138,15 @@ Google Maps loading:
 - You can disable it by setting `load_google_maps=false` if you prefer to include the Google script tag elsewhere.
 
 
+## Installation
+
+Install the package via Composer:
+
+```bash
+composer require sanderdewijs/lara-livewire-maps
+```
+
+
 ## Quick Start
 Render a map with a couple of markers:
 
