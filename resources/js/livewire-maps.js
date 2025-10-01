@@ -5,7 +5,36 @@
 		queue: [],
 		ready: false,
 	};
-	const LW = window.__LW_MAPS;
+        const LW = window.__LW_MAPS;
+        LW.instances = LW.instances || {};
+        LW.queue = Array.isArray(LW.queue) ? LW.queue : [];
+
+        function isDisplayed(el) {
+                if (!el) return false;
+                if (el.offsetWidth > 0 || el.offsetHeight > 0) return true;
+                if (el.getClientRects) {
+                        const rects = el.getClientRects();
+                        for (let i = 0; rects && i < rects.length; i++) {
+                                if (rects[i].width > 0 && rects[i].height > 0) {
+                                        return true;
+                                }
+                        }
+                }
+                if (typeof window.getComputedStyle === 'function') {
+                        const style = window.getComputedStyle(el);
+                        if (!style) return false;
+                        if (style.display === 'none' || style.visibility === 'hidden' || Number(style.opacity || '1') === 0) {
+                                return false;
+                        }
+                }
+                return false;
+        }
+
+        function scheduleQueueRun(delay) {
+                try {
+                        setTimeout(processQueue, delay);
+                } catch (_) {}
+        }
 
 	// Ensure Google Maps API is present before initializing any map
 	function ensureGoogle(cb) {
@@ -185,10 +214,14 @@
 		});
 	}
 
-	function initOne(domId, cfg) {
-		const el = document.getElementById(domId);
-		if (!el) return false; // try later
-		if (LW.instances[domId]) return true; // already
+        function initOne(domId, cfg) {
+                const el = document.getElementById(domId);
+                if (!el) return false; // try later
+                if (!isDisplayed(el)) {
+                        // Element exists but is currently hidden/zero-sized. Retry later when it becomes visible.
+                        return false;
+                }
+                if (LW.instances[domId]) return true; // already
 
 		const lat = Number(cfg && cfg.lat);
 		const lng = Number(cfg && cfg.lng);
@@ -225,26 +258,42 @@
 		return true;
 	}
 
-	function processQueue() {
-		if (!LW.queue.length) return;
-		ensureGoogle(() => {
-			LW.queue = LW.queue.filter(item => {
-				try { return !initOne(item.domId, item.config); } catch (_) { return true; }
-			});
-		});
-	}
+        function processQueue() {
+                if (!LW.queue.length) return;
+                ensureGoogle(() => {
+                        LW.queue = LW.queue.filter(item => {
+                                try { return !initOne(item.domId, item.config); } catch (_) { return true; }
+                        });
+                        if (LW.queue.length) {
+                                scheduleQueueRun(250);
+                        }
+                });
+        }
 
-	// Public API: queue an init until DOM element and Google API are ready
-	LW.queueInit = function (domId, config) {
-		LW.queue.push({ domId, config });
-		// Try immediately in case everything is ready already
-		try { initOne(domId, config); } catch (_) {}
-		// Also schedule retries shortly after
-		setTimeout(processQueue, 0);
-		setTimeout(processQueue, 200);
-		if (document.readyState === 'complete') setTimeout(processQueue, 1000);
-		else window.addEventListener('load', () => setTimeout(processQueue, 0), { once: true });
-	};
+        // Public API: queue an init until DOM element and Google API are ready
+        LW.queueInit = function (domId, config) {
+                const key = String(domId);
+                const entry = { domId: key, config: config || {} };
+                const existingIndex = LW.queue.findIndex(item => item.domId === key);
+                if (existingIndex === -1) {
+                        LW.queue.push(entry);
+                } else {
+                        LW.queue[existingIndex] = entry;
+                }
+
+                let initialized = false;
+                try { initialized = initOne(entry.domId, entry.config); } catch (_) { initialized = false; }
+                if (initialized) {
+                        LW.queue = LW.queue.filter(item => item.domId !== entry.domId);
+                        return;
+                }
+
+                // Also schedule retries shortly after and until it becomes visible/ready
+                scheduleQueueRun(0);
+                scheduleQueueRun(200);
+                if (document.readyState === 'complete') scheduleQueueRun(1000);
+                else window.addEventListener('load', () => scheduleQueueRun(0), { once: true });
+        };
 	LW.queueInit.__isShim = false;
 	try { LW.__queueInitShim = null; } catch (_) {}
 
