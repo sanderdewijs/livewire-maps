@@ -82,12 +82,12 @@
 		} catch (_) {}
 	}
 
-	function setMarkers(inst, markers, useClusters, clusterOptions) {
-		if (!inst || !inst.map || !Array.isArray(markers)) return;
-		clearMarkers(inst);
+        function setMarkers(inst, markers, useClusters, clusterOptions) {
+                if (!inst || !inst.map || !Array.isArray(markers)) return;
+                clearMarkers(inst);
 
-		const gMarkers = [];
-		markers.forEach(m => {
+                const gMarkers = [];
+                markers.forEach(m => {
 			const pos = { lat: Number(m.lat), lng: Number(m.lng) };
 			if (isNaN(pos.lat) || isNaN(pos.lng)) return;
 			const mk = new google.maps.Marker({
@@ -134,31 +134,427 @@
 
 			// Fallback: clusterer not available or failed → show markers directly on map
 			try { gMarkers.forEach(mk => mk.setMap(inst.map)); } catch (_) {}
-		}
-	}
+                }
+        }
 
-	function setupDrawing(inst, drawType) {
-		if (!inst || !inst.map || !drawType) return;
-		if (!google.maps.drawing || !google.maps.drawing.DrawingManager) return;
+        function resolveTerraDrawExports() {
+                try {
+                        if (typeof window === 'undefined') return null;
+                        const root = window;
 
-		// Clean up any previous drawing manager and overlay
-		try {
-			if (inst.drawingManager && typeof inst.drawingManager.setMap === 'function') {
-				inst.drawingManager.setMap(null);
-			}
-		} catch (_) {}
-		inst.drawingManager = null;
-		try {
-			if (inst.drawOverlay && typeof inst.drawOverlay.setMap === 'function') {
-				inst.drawOverlay.setMap(null);
-			}
-		} catch (_) {}
-		inst.drawOverlay = null;
+                        let terraNamespace = null;
+                        if (root.TerraDraw && typeof root.TerraDraw === 'object') {
+                                terraNamespace = root.TerraDraw;
+                        }
 
-		// Only allow a single overlay at a time after re-init
-		function clearOverlay() {
-			if (inst.drawOverlay) {
-				try { inst.drawOverlay.setMap(null); } catch (_) {}
+                        let TerraDrawCtor = null;
+                        if (typeof root.TerraDraw === 'function') {
+                                TerraDrawCtor = root.TerraDraw;
+                        }
+                        if (!TerraDrawCtor && terraNamespace && typeof terraNamespace.TerraDraw === 'function') {
+                                TerraDrawCtor = terraNamespace.TerraDraw;
+                        }
+                        if (!TerraDrawCtor && terraNamespace && typeof terraNamespace.default === 'function') {
+                                TerraDrawCtor = terraNamespace.default;
+                        }
+                        if (!TerraDrawCtor && root.TerraDraw && typeof root.TerraDraw.default === 'function') {
+                                TerraDrawCtor = root.TerraDraw.default;
+                        }
+
+                        let CircleModeCtor = null;
+                        if (terraNamespace && typeof terraNamespace.TerraDrawCircleMode === 'function') {
+                                CircleModeCtor = terraNamespace.TerraDrawCircleMode;
+                        }
+                        if (!CircleModeCtor && typeof root.TerraDrawCircleMode === 'function') {
+                                CircleModeCtor = root.TerraDrawCircleMode;
+                        }
+
+                        let PolygonModeCtor = null;
+                        if (terraNamespace && typeof terraNamespace.TerraDrawPolygonMode === 'function') {
+                                PolygonModeCtor = terraNamespace.TerraDrawPolygonMode;
+                        }
+                        if (!PolygonModeCtor && typeof root.TerraDrawPolygonMode === 'function') {
+                                PolygonModeCtor = root.TerraDrawPolygonMode;
+                        }
+
+                        const adaptersNamespace = (root.TerraDrawAdapters && typeof root.TerraDrawAdapters === 'object')
+                                ? root.TerraDrawAdapters
+                                : null;
+                        let GoogleMapsAdapterCtor = null;
+                        if (adaptersNamespace && typeof adaptersNamespace.GoogleMapsAdapter === 'function') {
+                                GoogleMapsAdapterCtor = adaptersNamespace.GoogleMapsAdapter;
+                        }
+                        if (!GoogleMapsAdapterCtor && typeof root.TerraDrawGoogleMapsAdapter === 'function') {
+                                GoogleMapsAdapterCtor = root.TerraDrawGoogleMapsAdapter;
+                        }
+
+                        if (!TerraDrawCtor || !GoogleMapsAdapterCtor) {
+                                return null;
+                        }
+
+                        return {
+                                TerraDrawCtor,
+                                CircleModeCtor,
+                                PolygonModeCtor,
+                                GoogleMapsAdapterCtor,
+                        };
+                } catch (_) {
+                        return null;
+                }
+        }
+
+        function disableLegacyDrawing(inst) {
+                if (!inst) return;
+                try { if (inst.drawingManager && typeof inst.drawingManager.setMap === 'function') { inst.drawingManager.setMap(null); } } catch (_) {}
+                inst.drawingManager = null;
+                try { if (inst.drawOverlay && typeof inst.drawOverlay.setMap === 'function') { inst.drawOverlay.setMap(null); } } catch (_) {}
+                inst.drawOverlay = null;
+        }
+
+        function disableTerraDrawing(inst) {
+                if (!inst || !inst.terraDraw) return;
+                inst.terraMode = null;
+                try { if (typeof inst.terraDraw.stop === 'function') { inst.terraDraw.stop(); } } catch (_) {}
+        }
+
+        function disableDrawing(inst) {
+                disableTerraDrawing(inst);
+                disableLegacyDrawing(inst);
+        }
+
+        function terraFeatureId(feature) {
+                if (!feature || typeof feature !== 'object') return null;
+                if (Object.prototype.hasOwnProperty.call(feature, 'id')) return feature.id;
+                if (Object.prototype.hasOwnProperty.call(feature, 'featureId')) return feature.featureId;
+                if (feature.properties && typeof feature.properties === 'object') {
+                        if (Object.prototype.hasOwnProperty.call(feature.properties, 'id')) return feature.properties.id;
+                        if (Object.prototype.hasOwnProperty.call(feature.properties, 'featureId')) return feature.properties.featureId;
+                }
+                return null;
+        }
+
+        function fetchTerraFeatures(draw) {
+                if (!draw) return [];
+                try {
+                        if (typeof draw.getAll === 'function') {
+                                const all = draw.getAll();
+                                if (Array.isArray(all)) return all;
+                                if (all && Array.isArray(all.features)) return all.features;
+                        }
+                } catch (_) {}
+                try {
+                        if (typeof draw.getCollection === 'function') {
+                                const col = draw.getCollection();
+                                if (col && Array.isArray(col.features)) return col.features;
+                        }
+                } catch (_) {}
+                try {
+                        if (typeof draw.getData === 'function') {
+                                const data = draw.getData();
+                                if (Array.isArray(data)) return data;
+                                if (data && Array.isArray(data.features)) return data.features;
+                        }
+                } catch (_) {}
+                return [];
+        }
+
+        function getFeatureById(draw, id) {
+                if (!draw || id == null) return null;
+                try {
+                        if (typeof draw.get === 'function') {
+                                return draw.get(id);
+                        }
+                } catch (_) {}
+                try {
+                        if (typeof draw.getFeature === 'function') {
+                                return draw.getFeature(id);
+                        }
+                } catch (_) {}
+                const features = fetchTerraFeatures(draw);
+                for (let i = 0; i < features.length; i++) {
+                        const fid = terraFeatureId(features[i]);
+                        if (fid === id) return features[i];
+                }
+                return null;
+        }
+
+        function clearTerraFeatures(draw) {
+                if (!draw) return;
+                try { if (typeof draw.clear === 'function') { draw.clear(); return; } } catch (_) {}
+                try { if (typeof draw.deleteAll === 'function') { draw.deleteAll(); return; } } catch (_) {}
+                try { if (typeof draw.removeAll === 'function') { draw.removeAll(); return; } } catch (_) {}
+                const features = fetchTerraFeatures(draw);
+                features.forEach(feature => {
+                        const fid = terraFeatureId(feature);
+                        if (fid == null) return;
+                        try { if (typeof draw.remove === 'function') { draw.remove(fid); return; } } catch (_) {}
+                        try { if (typeof draw.delete === 'function') { draw.delete(fid); } } catch (_) {}
+                });
+        }
+
+        function toLatLng(point) {
+                if (point == null) return null;
+                if (Array.isArray(point) && point.length >= 2) {
+                        const lng = Number(point[0]);
+                        const lat = Number(point[1]);
+                        if (Number.isFinite(lat) && Number.isFinite(lng)) {
+                                return { lat, lng };
+                        }
+                }
+                if (typeof point === 'object') {
+                        const lat = Number(point.lat ?? point.latitude);
+                        const lng = Number(point.lng ?? point.lon ?? point.longitude);
+                        if (Number.isFinite(lat) && Number.isFinite(lng)) {
+                                return { lat, lng };
+                        }
+                }
+                return null;
+        }
+
+        function normalizePolygonPath(coords) {
+                if (!Array.isArray(coords)) return [];
+                const path = [];
+                coords.forEach(coord => {
+                        const pt = toLatLng(coord);
+                        if (pt) path.push(pt);
+                });
+                if (path.length >= 2) {
+                        const first = path[0];
+                        const last = path[path.length - 1];
+                        if (Math.abs(first.lat - last.lat) < 1e-9 && Math.abs(first.lng - last.lng) < 1e-9) {
+                                path.pop();
+                        }
+                }
+                return path;
+        }
+
+        function inferTerraFeatureType(feature) {
+                if (!feature || typeof feature !== 'object') return null;
+                const props = feature.properties && typeof feature.properties === 'object' ? feature.properties : {};
+                const mode = typeof props.mode === 'string' ? props.mode.toLowerCase() : null;
+                if (mode === 'circle' || mode === 'polygon') return mode;
+                if (props.shape === 'circle' || props.type === 'circle' || props.geometry === 'circle') return 'circle';
+                if (props.shape === 'polygon' || props.type === 'polygon') return 'polygon';
+                const geom = feature.geometry && typeof feature.geometry === 'object' ? feature.geometry : {};
+                if (geom.type === 'Polygon') {
+                        if (props.radius != null || props.radiusMeters != null) {
+                                return 'circle';
+                        }
+                        return 'polygon';
+                }
+                if (geom.type === 'Point' && (props.radius != null || props.radiusMeters != null)) {
+                        return 'circle';
+                }
+                return null;
+        }
+
+        function terraFeatureToPayload(inst, feature) {
+                if (!inst || !feature) return null;
+                const type = inferTerraFeatureType(feature);
+                if (type !== 'circle' && type !== 'polygon') return null;
+
+                const payload = { id: inst.id, type };
+                const props = feature.properties && typeof feature.properties === 'object' ? feature.properties : {};
+                const geom = feature.geometry && typeof feature.geometry === 'object' ? feature.geometry : {};
+
+                if (type === 'circle') {
+                        let center = props.center ?? props.centroid ?? props.position;
+                        if (!center && geom.type === 'Point') {
+                                center = geom.coordinates;
+                        }
+                        const centerLatLng = toLatLng(center);
+                        const radius = Number(props.radius ?? props.radiusMeters ?? props.radius_meters ?? props.radiusInMeters);
+                        if (!centerLatLng || !Number.isFinite(radius)) return null;
+                        payload.circle = {
+                                center: centerLatLng,
+                                radius,
+                        };
+                } else if (type === 'polygon') {
+                        let ring = null;
+                        if (geom.type === 'Polygon' && Array.isArray(geom.coordinates) && geom.coordinates.length) {
+                                ring = geom.coordinates[0];
+                        }
+                        if (!Array.isArray(ring)) return null;
+                        const path = normalizePolygonPath(ring);
+                        if (!path.length) return null;
+                        payload.polygon = { path };
+                }
+
+                return payload;
+        }
+
+        function gatherTerraEventFeatures(draw, evt) {
+                const list = [];
+                if (evt && typeof evt === 'object') {
+                        if (evt.feature && typeof evt.feature === 'object') {
+                                list.push(evt.feature);
+                        }
+                        if (Array.isArray(evt.features)) {
+                                evt.features.forEach(f => { if (f && typeof f === 'object') list.push(f); });
+                        }
+                        if (evt.id != null) {
+                                const byId = getFeatureById(draw, evt.id);
+                                if (byId) list.push(byId);
+                        }
+                        if (evt.featureId != null) {
+                                const byEventId = getFeatureById(draw, evt.featureId);
+                                if (byEventId) list.push(byEventId);
+                        }
+                }
+                if (!list.length) {
+                        const fallback = fetchTerraFeatures(draw);
+                        fallback.forEach(f => { if (f && typeof f === 'object') list.push(f); });
+                }
+                return list;
+        }
+
+        function pickTerraFeature(features, preferType) {
+                if (!Array.isArray(features) || !features.length) return null;
+                let fallback = null;
+                for (let i = features.length - 1; i >= 0; i--) {
+                        const feature = features[i];
+                        const type = inferTerraFeatureType(feature);
+                        if (!type) continue;
+                        if (preferType && type === preferType) {
+                                return feature;
+                        }
+                        if (!fallback) {
+                                fallback = feature;
+                        }
+                }
+                return fallback;
+        }
+
+        function attachTerraListeners(inst, draw) {
+                if (!inst || !draw || inst.terraListenersAttached) return;
+                const handler = function(evt) {
+                        const features = gatherTerraEventFeatures(draw, evt);
+                        const feature = pickTerraFeature(features, inst.terraMode);
+                        if (!feature) return;
+                        const payload = terraFeatureToPayload(inst, feature);
+                        if (!payload) return;
+                        const key = JSON.stringify(payload);
+                        if (inst.terraLastPayloadKey === key) return;
+                        inst.terraLastPayloadKey = key;
+                        try {
+                                window.Livewire.dispatch('lw-map:draw-complete', { payload });
+                        } catch (_) {}
+                };
+                try { if (typeof draw.on === 'function') { draw.on('finish', handler); } } catch (_) {}
+                try { if (typeof draw.on === 'function') { draw.on('change', handler); } } catch (_) {}
+                inst.terraListenersAttached = true;
+        }
+
+        function ensureTerraDraw(inst) {
+                if (!inst || !inst.map) return null;
+                if (inst.terraDraw) return inst.terraDraw;
+                const exports = resolveTerraDrawExports();
+                if (!exports) return null;
+
+                const modes = {};
+                if (exports.CircleModeCtor) {
+                        try { modes.circle = new exports.CircleModeCtor(); } catch (_) {}
+                }
+                if (exports.PolygonModeCtor) {
+                        try { modes.polygon = new exports.PolygonModeCtor(); } catch (_) {}
+                }
+
+                // Ensure at least one mode exists
+                const hasModes = Object.keys(modes).length > 0;
+                if (!hasModes) return null;
+
+                let draw = null;
+                try {
+                        draw = new exports.TerraDrawCtor({
+                                adapter: new exports.GoogleMapsAdapterCtor({ map: inst.map }),
+                                modes,
+                        });
+                } catch (_) {
+                        draw = null;
+                }
+                if (!draw) return null;
+
+                inst.terraDraw = draw;
+                inst.terraListenersAttached = false;
+                inst.terraLastPayloadKey = null;
+
+                try { if (typeof draw.render === 'function') { draw.render(); } } catch (_) {}
+                attachTerraListeners(inst, draw);
+
+                return draw;
+        }
+
+        function activateTerraMode(inst, drawType) {
+                if (!inst) return false;
+                const draw = ensureTerraDraw(inst);
+                if (!draw) return false;
+
+                inst.terraMode = drawType;
+                inst.terraLastPayloadKey = null;
+
+                clearTerraFeatures(draw);
+
+                let modeActivated = false;
+                try {
+                        if (typeof draw.start === 'function') {
+                                if (draw.start.length >= 1) {
+                                        draw.start(drawType);
+                                        modeActivated = true;
+                                } else {
+                                        draw.start();
+                                        modeActivated = true;
+                                }
+                        }
+                } catch (_) {}
+
+                if (!modeActivated) {
+                        try {
+                                if (typeof draw.setMode === 'function') {
+                                        draw.setMode(drawType);
+                                        modeActivated = true;
+                                }
+                        } catch (_) {}
+                }
+
+                if (!modeActivated) {
+                        try {
+                                if (typeof draw.changeMode === 'function') {
+                                        draw.changeMode(drawType);
+                                        modeActivated = true;
+                                }
+                        } catch (_) {}
+                }
+
+                if (!modeActivated) {
+                        try {
+                                if (typeof draw.mode === 'function') {
+                                        draw.mode(drawType);
+                                        modeActivated = true;
+                                }
+                        } catch (_) {}
+                }
+
+                if (!modeActivated) {
+                        // As a final fallback attempt to set internal state and trigger render
+                        try { draw.currentMode = drawType; } catch (_) {}
+                }
+
+                try { if (typeof draw.render === 'function') { draw.render(); } } catch (_) {}
+
+                return true;
+        }
+
+        function setupLegacyDrawing(inst, drawType) {
+                if (!inst || !inst.map || !drawType) return;
+                if (!google.maps.drawing || !google.maps.drawing.DrawingManager) return;
+
+                // Clean up any previous drawing manager and overlay
+                disableLegacyDrawing(inst);
+
+                // Only allow a single overlay at a time after re-init
+                function clearOverlay() {
+                        if (inst.drawOverlay) {
+                                try { inst.drawOverlay.setMap(null); } catch (_) {}
 				inst.drawOverlay = null;
 			}
 		}
@@ -207,12 +603,22 @@
 			} catch (_) {}
 
 			// Emit a Livewire event for app code to consume
-			try {
-				window.Livewire.dispatch('lw-map:draw-complete', {payload: payload});
-			} catch (_) {}
+                        try {
+                                window.Livewire.dispatch('lw-map:draw-complete', {payload: payload});
+                        } catch (_) {}
 
-		});
-	}
+                });
+        }
+
+        function setupDrawing(inst, drawType) {
+                if (!inst || !inst.map || !drawType) return;
+
+                if (activateTerraMode(inst, drawType)) {
+                        return;
+                }
+
+                setupLegacyDrawing(inst, drawType);
+        }
 
         function initOne(domId, cfg) {
                 const el = document.getElementById(domId);
@@ -233,15 +639,19 @@
 
 		const map = new google.maps.Map(el, { center, zoom: z, ...mapOptions });
 
-		const inst = {
-			id: domId,
-			map,
-			markers: [],
-			clusterer: null,
-			infoWindow: null,
-			drawingManager: null,
-			drawOverlay: null,
-		};
+                const inst = {
+                        id: domId,
+                        map,
+                        markers: [],
+                        clusterer: null,
+                        infoWindow: null,
+                        drawingManager: null,
+                        drawOverlay: null,
+                        terraDraw: null,
+                        terraMode: null,
+                        terraListenersAttached: false,
+                        terraLastPayloadKey: null,
+                };
 
 		LW.instances[domId] = inst;
 
@@ -332,17 +742,13 @@
 			}
 
 			// Update draw type if explicitly provided (allow null to clear)
-			if (Object.prototype.hasOwnProperty.call(d, 'drawType')) {
-				if (d.drawType) {
-					setupDrawing(inst, d.drawType);
-				} else {
-					// Clear draw mode and any existing overlay
-					try { if (inst.drawingManager && typeof inst.drawingManager.setMap === 'function') { inst.drawingManager.setMap(null); } } catch (_) {}
-					inst.drawingManager = null;
-					try { if (inst.drawOverlay && typeof inst.drawOverlay.setMap === 'function') { inst.drawOverlay.setMap(null); } } catch (_) {}
-					inst.drawOverlay = null;
-				}
-			}
+                        if (Object.prototype.hasOwnProperty.call(d, 'drawType')) {
+                                if (d.drawType) {
+                                        setupDrawing(inst, d.drawType);
+                                } else {
+                                        disableDrawing(inst);
+                                }
+                        }
 
 			// Update center if provided
 			const hasCenter = (typeof d.centerLat === 'number' && typeof d.centerLng === 'number');
@@ -371,19 +777,15 @@
 			const type = d && Object.prototype.hasOwnProperty.call(d, 'type') ? d.type : null;
 			const targetIds = d && d.id ? [String(d.id)] : Object.keys(LW.instances);
 			targetIds.forEach(function(mapId){
-				const inst = LW.instances[mapId];
-				if (!inst) return;
-				if (!type) {
-					// Exit draw mode: remove manager and overlay
-					try { if (inst.drawingManager && typeof inst.drawingManager.setMap === 'function') { inst.drawingManager.setMap(null); } } catch(_) {}
-					inst.drawingManager = null;
-					try { if (inst.drawOverlay && typeof inst.drawOverlay.setMap === 'function') { inst.drawOverlay.setMap(null); } } catch(_) {}
-					inst.drawOverlay = null;
-				} else {
-					setupDrawing(inst, type);
-				}
-			});
-		});
+                                const inst = LW.instances[mapId];
+                                if (!inst) return;
+                                if (!type) {
+                                        disableDrawing(inst);
+                                } else {
+                                        setupDrawing(inst, type);
+                                }
+                        });
+                });
 	} catch(_) {}
 
 	// Livewire v3 hook: resize visible maps after DOM updates (e.g., wizard steps)

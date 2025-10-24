@@ -50,7 +50,7 @@
     $cfg = config('livewire-maps', []);
     $loadGoogle = (bool) ($cfg['load_google_maps'] ?? true);
     $googleKey = $cfg['google_maps_key'] ?? ($cfg['api_key'] ?? null);
-    $libraries = $cfg['google_maps_libraries'] ?? 'drawing,geometry';
+    $libraries = $cfg['google_maps_libraries'] ?? 'geometry';
     $locale = $cfg['locale'] ?? null;
     $assetDriver = $cfg['asset_driver'] ?? 'file';
     $cdnUrl = $cfg['cdn_url'] ?? null;
@@ -58,6 +58,9 @@
     $mixPath = $cfg['mix_path'] ?? '/vendor/livewire-maps/livewire-maps.js';
     $clustererSrc = 'https://cdn.jsdelivr.net/npm/@googlemaps/markerclusterer/dist/index.min.js';
     $loadsClusterer = $assetDriver !== 'none';
+    $loadTerraDraw = (bool) ($cfg['load_terra_draw'] ?? true);
+    $terraCoreSrc = $cfg['terra_draw_core_url'] ?? null;
+    $terraAdapterSrc = $cfg['terra_draw_google_adapter_url'] ?? null;
 @endphp
 
 {{-- Optionally include Google Maps API --}}
@@ -73,6 +76,12 @@
 {{-- Load package JS based on configured asset driver --}}
 @if($loadsClusterer)
     <script src="{{ $clustererSrc }}"></script>
+@endif
+@if($loadTerraDraw && $terraCoreSrc)
+    <script src="{{ $terraCoreSrc }}" defer></script>
+@endif
+@if($loadTerraDraw && $terraAdapterSrc)
+    <script src="{{ $terraAdapterSrc }}" defer></script>
 @endif
 @switch($assetDriver)
     @case('vite')
