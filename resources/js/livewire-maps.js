@@ -2,10 +2,12 @@
     window.__LW_MAPS = window.__LW_MAPS || {
         instances: {},
         queue: [],
+        pendingUpdates: {}, // Queue for updates that arrive before map is initialized
         ready: false,
     };
     const LW = window.__LW_MAPS;
     LW.instances = LW.instances || {};
+    LW.pendingUpdates = LW.pendingUpdates || {};
 
     // Debug mode - set to true to enable console logging
     const DEBUG = true;
@@ -39,8 +41,7 @@
 
     function clearMarkers(inst) {
         if (!inst || !inst.leafletMap) return;
-        if (inst.drawnItems) inst.drawnItems.clearLayers();
-        // Verwijder bestaande cluster layer eerst
+        // Do NOT clear drawnItems here - preserve drawn shapes (circles/polygons)
         if (inst.clusterer) {
             inst.leafletMap.removeLayer(inst.clusterer);
             inst.clusterer = null;
@@ -266,6 +267,15 @@
             setMarkers(inst, cfg.markers, !!cfg.useClusters);
         }
 
+        // Process any pending updates that arrived before initialization
+        if (LW.pendingUpdates[domId]) {
+            debug('Processing pending update for:', domId);
+            const pendingData = LW.pendingUpdates[domId];
+            delete LW.pendingUpdates[domId];
+            // Use setTimeout to ensure the map is fully ready
+            setTimeout(() => handleMapUpdate(pendingData), 50);
+        }
+
         return true;
     }
 
@@ -298,7 +308,22 @@
         const d = Array.isArray(data) ? data[0] : (data || {});
         const inst = LW.instances[d.id];
         if (!inst) {
-            debug('No instance found for id:', d.id);
+            debug('No instance found for id:', d.id, '- queueing update for later');
+            // Queue the update for when the map is initialized
+            LW.pendingUpdates[d.id] = d;
+            // Try to initialize the map now if the DOM element exists
+            const el = document.getElementById(d.id);
+            if (el) {
+                debug('DOM element found, attempting to initialize map:', d.id);
+                LW.queueInit(d.id, {
+                    lat: el.dataset.lat,
+                    lng: el.dataset.lng,
+                    zoom: el.dataset.zoom,
+                    markers: JSON.parse(el.dataset.markers || '[]'),
+                    useClusters: el.dataset.useClusters === 'true' || el.dataset.useClusters === '1',
+                    enableDrawing: el.dataset.enableDrawing === '1',
+                });
+            }
             return;
         }
 
@@ -356,6 +381,15 @@
             // Explicitly remove radius circle when radius is null
             inst.drawnItems.removeLayer(inst.radiusCircle);
             inst.radiusCircle = null;
+        }
+
+        // Keep toolbar visible if there are drawn shapes
+        if (inst.drawnItems && inst.drawnItems.getLayers().length > 0) {
+            const toolbar = document.getElementById(`terra-toolbar-${d.id}`);
+            if (toolbar) {
+                toolbar.style.display = 'flex';
+                debug('Toolbar kept visible - shapes present');
+            }
         }
     }
 
