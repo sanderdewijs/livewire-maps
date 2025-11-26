@@ -54,7 +54,7 @@ return [
     'google_maps_key' => env('LW_MAPS_GOOGLE_KEY', env('GOOGLE_MAPS_API_KEY', null)),
 
     // Comma separated libraries to load with Google Maps API
-    'google_maps_libraries' => env('LW_MAPS_GOOGLE_LIBS', 'drawing,geometry'),
+    'google_maps_libraries' => env('LW_MAPS_GOOGLE_LIBS', 'geometry'),
 
     // Locale/language for Google Maps UI (e.g. 'nl', 'en')
     'locale' => env('LW_MAPS_LOCALE', null),
@@ -62,9 +62,14 @@ return [
     // CDN URL to the package JS (when asset_driver = 'cdn')
     'cdn_url' => env('LW_MAPS_CDN_URL', null),
 
+
+
     // Vite entry used by @vite (when asset_driver = 'vite')
     'vite_entry' => env('LW_MAPS_VITE_ENTRY', 'resources/js/livewire-maps.js'),
 
     // Mix path passed to mix() (when asset_driver = 'mix')
     'mix_path' => env('LW_MAPS_MIX_PATH', '/vendor/livewire-maps/livewire-maps.js'),
+
+    // Enable drawing functionality (toolbar and draw controls)
+    'enable_drawing' => env('LW_MAPS_ENABLE_DRAWING', false),
 ];

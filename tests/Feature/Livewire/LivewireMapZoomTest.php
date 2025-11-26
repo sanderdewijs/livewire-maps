@@ -8,37 +8,10 @@ class DummyLivewireMapForZoomTest extends LivewireMap
 
     public function dispatch($event, ...$params)
     {
-        // Map positional params back to expected keys based on how the component dispatches
-        $payload = [
+        $this->lastDispatch = [
             'event' => $event,
-            'id' => $params[0] ?? null,
-            'markers' => $params[1] ?? null,
-            'useClusters' => $params[2] ?? null,
-            'clusterOptions' => $params[3] ?? null,
-            'centerLat' => null,
-            'centerLng' => null,
-            'zoom' => null,
+            ...$params,
         ];
-
-        // Examine trailing arguments for numeric values to infer center and zoom
-        $tail = array_slice($params, 4);
-        $nums = [];
-        foreach ($tail as $v) {
-            if (is_int($v) || is_float($v) || (is_numeric($v))) {
-                $nums[] = $v + 0; // cast numeric strings to number
-            }
-        }
-        if (count($nums) >= 2) {
-            $payload['centerLat'] = (float) $nums[0];
-            $payload['centerLng'] = (float) $nums[1];
-        }
-        if (count($nums) >= 3) {
-            $payload['zoom'] = (int) $nums[2];
-        } elseif (count($nums) === 1) {
-            $payload['zoom'] = (int) $nums[0];
-        }
-
-        $this->lastDispatch = $payload;
         return null;
     }
 }
@@ -76,6 +49,6 @@ it('forwards zoom even when center is not provided', function () {
     expect($comp->lastDispatch['zoom'])->toBe(9);
     expect($comp->zoom)->toBe(9);
     // No center should be forwarded
-    expect($comp->lastDispatch['centerLat'])->toBeNull();
-    expect($comp->lastDispatch['centerLng'])->toBeNull();
+    expect(array_key_exists('centerLat', $comp->lastDispatch))->toBeFalse();
+    expect(array_key_exists('centerLng', $comp->lastDispatch))->toBeFalse();
 });

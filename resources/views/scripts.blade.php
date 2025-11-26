@@ -1,6 +1,12 @@
 {{-- Livewire Maps Scripts Directive --}}
 {{-- Usage: place @LwMapsScripts before </body> in your layout --}}
 
+{{-- Leaflet CSS --}}
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+<link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+
 {{-- Bootstrap global namespace to avoid inline duplicates in components --}}
 <script>
 	window.__LW_MAPS = window.__LW_MAPS || { instances: {}, queue: [], ready: false };
@@ -50,13 +56,13 @@
     $cfg = config('livewire-maps', []);
     $loadGoogle = (bool) ($cfg['load_google_maps'] ?? true);
     $googleKey = $cfg['google_maps_key'] ?? ($cfg['api_key'] ?? null);
-    $libraries = $cfg['google_maps_libraries'] ?? 'drawing,geometry';
+    $libraries = $cfg['google_maps_libraries'] ?? 'geometry';
     $locale = $cfg['locale'] ?? null;
     $assetDriver = $cfg['asset_driver'] ?? 'file';
     $cdnUrl = $cfg['cdn_url'] ?? null;
     $viteEntry = $cfg['vite_entry'] ?? 'resources/js/livewire-maps.js';
     $mixPath = $cfg['mix_path'] ?? '/vendor/livewire-maps/livewire-maps.js';
-    $clustererSrc = 'https://cdn.jsdelivr.net/npm/@googlemaps/markerclusterer/dist/index.min.js';
+    $clustererSrc = 'https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js';
     $loadsClusterer = $assetDriver !== 'none';
 @endphp
 
@@ -70,10 +76,29 @@
     <script id="lw-google-maps-script" src="{{ $gmSrc }}" async defer></script>
 @endif
 
-{{-- Load package JS based on configured asset driver --}}
+{{-- Leaflet JS --}}
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.draw/1.0.4/leaflet.draw.js"></script>
+
+{{-- Leaflet MarkerCluster (must load after Leaflet) --}}
 @if($loadsClusterer)
     <script src="{{ $clustererSrc }}"></script>
 @endif
+<script src="https://cdn.jsdelivr.net/npm/leaflet.path.drag@0.0.3/src/Path.Drag.min.js"></script>
+{{-- Polyfill for L.DomEvent methods removed in Leaflet 1.8+ --}}
+<script>
+if (typeof L !== 'undefined' && L.DomEvent) {
+    if (!L.DomEvent.fakeStop) {
+        L.DomEvent.fakeStop = function() { return true; };
+    }
+    if (!L.DomEvent.skipped) {
+        L.DomEvent.skipped = function() { return true; };
+    }
+}
+</script>
+<script src="https://cdn.jsdelivr.net/npm/leaflet-draw-drag@0.4.8/dist/Leaflet.draw.drag-src.min.js"></script>
+
+
 @switch($assetDriver)
     @case('vite')
         @vite($viteEntry)

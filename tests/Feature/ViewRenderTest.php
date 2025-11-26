@@ -25,11 +25,14 @@ it('renders the map container with id, wire:ignore, and size styles', function (
 
     // Simulate Blade variable interpolation for key attributes
     $html = str_replace('id="{{ $domId }}"', 'id="test-map-456"', $template);
-    $html = str_replace('style="width: {{ $width }}; height: {{ $height }};"', 'style="width: 600px; height: 300px;"', $html);
+    $html = str_replace('width: {{ $width }}', 'width: 600px', $html);
+    $html = str_replace('height: {{ $height }}', 'height: 300px', $html);
 
     // We expect the opening container div to include our simulated values
     expect($html)->toContain('<div id="test-map-456"');
     expect($html)->toContain('wire:ignore');
     expect($html)->toContain('data-lw-map');
-    expect($html)->toContain('style="width: 600px; height: 300px;"');
+    // Width/height are on the outer wrapper div
+    expect($html)->toContain('width: 600px');
+    expect($html)->toContain('height: 300px');
 });
