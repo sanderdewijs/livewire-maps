@@ -62,16 +62,14 @@ return [
     // CDN URL to the package JS (when asset_driver = 'cdn')
     'cdn_url' => env('LW_MAPS_CDN_URL', null),
 
-    // Should the TerraDraw scripts be loaded automatically?
-    'load_terra_draw' => env('LW_MAPS_LOAD_TERRADRAW', true),
 
-    // CDN URLs for TerraDraw core and the Google Maps adapter
-    'terra_draw_core_url' => env('LW_MAPS_TERRADRAW_CORE_URL', 'https://cdn.jsdelivr.net/npm/@terradraw/core@1.7.4/dist/terradraw.umd.js'),
-    'terra_draw_google_adapter_url' => env('LW_MAPS_TERRADRAW_ADAPTER_URL', 'https://cdn.jsdelivr.net/npm/@terradraw/google-maps-adapter@1.7.4/dist/terradraw-google-maps-adapter.umd.js'),
 
     // Vite entry used by @vite (when asset_driver = 'vite')
     'vite_entry' => env('LW_MAPS_VITE_ENTRY', 'resources/js/livewire-maps.js'),
 
     // Mix path passed to mix() (when asset_driver = 'mix')
     'mix_path' => env('LW_MAPS_MIX_PATH', '/vendor/livewire-maps/livewire-maps.js'),
+
+    // Enable drawing functionality (toolbar and draw controls)
+    'enable_drawing' => env('LW_MAPS_ENABLE_DRAWING', false),
 ];

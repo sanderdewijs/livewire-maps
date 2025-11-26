@@ -8,25 +8,10 @@ class DummyLivewireMapForDrawTypeTest extends LivewireMap
 
     public function dispatch($event, ...$params)
     {
-        $payload = [
+        $this->lastDispatch = [
             'event' => $event,
-            'id' => $params[0] ?? null,
-            'markers' => $params[1] ?? null,
-            'useClusters' => $params[2] ?? null,
-            'clusterOptions' => $params[3] ?? null,
-            'drawType' => null,
+            ...$params,
         ];
-
-        // The dispatch call uses named parameters in a fixed order.
-        // drawType, when provided, is the last argument and is a string (not equal to id which is first)
-        if (!empty($params)) {
-            $last = $params[count($params) - 1];
-            if (is_string($last) && $last !== $payload['id']) {
-                $payload['drawType'] = $last;
-            }
-        }
-
-        $this->lastDispatch = $payload;
         return null;
     }
 }
@@ -59,5 +44,5 @@ it('omits drawType when not provided', function () {
     );
 
     expect($comp->lastDispatch['event'])->toBe('lw-map-internal-update');
-    expect($comp->lastDispatch['drawType'])->toBeNull();
+    expect(array_key_exists('drawType', $comp->lastDispatch))->toBeFalse();
 });
