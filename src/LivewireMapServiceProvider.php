@@ -53,7 +53,14 @@ class LivewireMapServiceProvider extends ServiceProvider
         // Defer Livewire component registration until all providers are booted
         $this->app->booted(function () {
             if (class_exists('Livewire\\Livewire') && $this->app->bound('livewire')) {
-                \Livewire\Livewire::component('livewire-map', \Sdw\LivewireMaps\Livewire\LivewireMap::class);
+                $livewire = \Livewire\Livewire::getFacadeRoot();
+
+                // Livewire 4 uses addComponent(), Livewire 3 uses component()
+                if (method_exists($livewire, 'addComponent')) {
+                    \Livewire\Livewire::addComponent(name: 'livewire-map', class: \Sdw\LivewireMaps\Livewire\LivewireMap::class);
+                } else {
+                    \Livewire\Livewire::component('livewire-map', \Sdw\LivewireMaps\Livewire\LivewireMap::class);
+                }
             }
         });
     }

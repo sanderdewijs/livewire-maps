@@ -2,6 +2,7 @@
 
 namespace Sdw\LivewireMaps\Livewire;
 
+use Livewire\Attributes\On;
 use Livewire\Component;
 
 class LivewireMap extends Component
@@ -33,17 +34,6 @@ class LivewireMap extends Component
     public $initEvent = null; // optional custom browser event name to trigger init
 
     public $mapsPlaceholderImg = null; // optional placeholder background image URL
-
-    /**
-     * Listen for map update events from Livewire.
-     * We'll normalize incoming markers and update the internal state.
-     *
-     * Using Livewire's event system ensures data flows through PHP so marker
-     * shapes like `lat_lng` strings/arrays get normalized consistently.
-     */
-    protected $listeners = [
-        'lw-map:update' => 'onMapUpdate',
-    ];
 
     public function mount(
         $apiKey = null,
@@ -108,6 +98,7 @@ class LivewireMap extends Component
     /**
      * Normalize and update markers when the map update event is received.
      */
+    #[On('lw-map:update')]
     public function onMapUpdate(array $markers = [], bool $useClusters = false, array $clusterOptions = [], array $center = [], ?int $zoom = null, ?string $drawType = null, ?int $radius = null, array $radiusOptions = []): void
     {
         // Normalize and update component state

@@ -1,12 +1,13 @@
 {
   "name": "sanderdewijs/lara-livewire-maps",
-  "description": "Laravel Livewire 3 Google Maps component with markers, events, and optional clustering.",
+  "description": "Laravel Livewire 3/4 Google Maps component with markers, events, and optional clustering.",
   "type": "library",
   "license": "MIT",
   "keywords": [
     "laravel",
     "livewire",
     "livewire3",
+    "livewire4",
     "google-maps",
     "maps",
     "component"
@@ -15,7 +16,7 @@
     "php": "^8.2",
     "illuminate/contracts": "^10.0 || ^11.0 || ^12.0",
     "illuminate/support": "^10.0 || ^11.0 || ^12.0",
-    "livewire/livewire": "^3.6",
+    "livewire/livewire": "^3.6 || ^4.0",
     "spatie/laravel-ray": "^1.40"
   },
   "require-dev": {
