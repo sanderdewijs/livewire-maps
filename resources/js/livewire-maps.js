@@ -453,7 +453,7 @@
                 lng: el.dataset.lng,
                 zoom: el.dataset.zoom,
                 markers: JSON.parse(el.dataset.markers || '[]'),
-                useClusters: el.dataset.useClusters === 'true',
+                useClusters: el.dataset.useClusters === 'true' || el.dataset.useClusters === '1',
                 enableDrawing: el.dataset.enableDrawing === '1',
             };
             LW.queueInit(id, cfg);
