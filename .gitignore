@@ -1,2 +1,17 @@
 /vendor/
 /.factory/memory.db
+
+
+# Environment & secrets
+.env
+.env.bak
+.env.local
+.env.notes
+.env.*.local
+.env.*.bak
+!.env.example
+!.env.example.*
+# Private keys & certificates
+*.pem
+*-private.key
+oauth-private.key
