@@ -84,7 +84,7 @@
 @if($loadsClusterer)
     <script src="{{ $clustererSrc }}"></script>
 @endif
-<script src="https://cdn.jsdelivr.net/npm/leaflet.path.drag@0.0.3/src/Path.Drag.min.js"></script>
+<script src="https://unpkg.com/leaflet.path.drag@0.0.3/src/Path.Drag.js"></script>
 {{-- Polyfill for L.DomEvent methods removed in Leaflet 1.8+ --}}
 <script>
 if (typeof L !== 'undefined' && L.DomEvent) {
@@ -96,7 +96,7 @@ if (typeof L !== 'undefined' && L.DomEvent) {
     }
 }
 </script>
-<script src="https://cdn.jsdelivr.net/npm/leaflet-draw-drag@0.4.8/dist/Leaflet.draw.drag-src.min.js"></script>
+<script src="https://unpkg.com/leaflet-draw-drag@0.4.8/dist/Leaflet.draw.drag.js"></script>
 
 
 @switch($assetDriver)
