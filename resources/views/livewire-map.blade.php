@@ -10,6 +10,7 @@
          data-map-options='@json($mapOptions)'
          data-markers='@json($normalizedMarkers)'
          data-enable-drawing="{{ config('livewire-maps.enable_drawing', false) ? '1' : '0' }}"
+         data-enable-multi-shape="{{ config('livewire-maps.enable_multi_shape', false) ? '1' : '0' }}"
          wire:ignore
          style="width: 100%; height: 100%;"
     >

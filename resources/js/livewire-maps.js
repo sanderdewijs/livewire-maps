@@ -15,6 +15,60 @@
         if (DEBUG) console.log('[LW-MAPS]', ...args);
     }
 
+    function isMultiShape(cfg) {
+        return cfg?.enableMultiShape === '1' || cfg?.enableMultiShape === true;
+    }
+
+    function nextShapeId() {
+        return 'lw-' + Date.now().toString(36) + '-' + Math.random().toString(36).slice(2, 9);
+    }
+
+    function layerToShape(layer) {
+        if (!layer._lwId) {
+            layer._lwId = nextShapeId();
+        }
+
+        if (layer instanceof L.Circle) {
+            const center = layer.getLatLng();
+
+            return {
+                id: layer._lwId,
+                type: 'circle',
+                center: { lat: center.lat, lng: center.lng },
+                radius: Math.round(layer.getRadius()),
+            };
+        }
+
+        if (layer instanceof L.Polygon) {
+            const path = layer.getLatLngs()[0].map(p => ({ lat: p.lat, lng: p.lng }));
+
+            return {
+                id: layer._lwId,
+                type: 'polygon',
+                polygon: { path },
+            };
+        }
+
+        return null;
+    }
+
+    function payloadFromLayer(layer, domId) {
+        const payload = { id: domId };
+
+        if (layer instanceof L.Circle) {
+            const center = layer.getLatLng();
+            payload.type = 'circle';
+            payload.center = { lat: center.lat, lng: center.lng };
+            payload.radius = Math.round(layer.getRadius());
+        } else if (layer instanceof L.Polygon) {
+            const path = layer.getLatLngs()[0].map(p => ({ lat: p.lat, lng: p.lng }));
+            payload.type = 'polygon';
+            payload.polygon = { path };
+        }
+
+        return payload;
+    }
+
     // === HULPFUNCTIES (grotendeels hetzelfde als voorheen) ===
     function isDisplayed(el) {
         if (!el) return false;
@@ -96,6 +150,7 @@
     function initOne(domId, cfg) {
         cfg = cfg || {};
         cfg.enableDrawing = cfg.enableDrawing === '1' || cfg.enableDrawing === true;
+        cfg.enableMultiShape = cfg.enableMultiShape === '1' || cfg.enableMultiShape === true;
 
         const el = document.getElementById(domId);
         if (!el || !isDisplayed(el)) return false;
@@ -195,31 +250,30 @@
         function dispatchComplete(instance) {
             const layers = [];
             instance.drawnItems.eachLayer(l => layers.push(l));
+            const multiShape = isMultiShape(instance.config);
 
             if (layers.length === 0) {
-                window.Livewire.dispatch('lw-map:draw-complete', { payload: { id: domId, type: null } });
+                const emptyPayload = { id: domId, type: null };
+                if (multiShape) {
+                    emptyPayload.shapes = [];
+                }
+                window.Livewire.dispatch('lw-map:draw-complete', { payload: emptyPayload });
                 return;
             }
 
-            const layer = layers[layers.length - 1]; // Laatst getekende
-            let payload = { id: domId };
+            const layer = layers[layers.length - 1];
+            const payload = payloadFromLayer(layer, domId);
 
-            if (layer instanceof L.Circle) {
-                const center = layer.getLatLng();
-                const radius = layer.getRadius(); // in meters!
-                payload.type = 'circle';
-                payload.center = { lat: center.lat, lng: center.lng };
-                payload.radius = Math.round(radius);
-            } else if (layer instanceof L.Polygon) {
-                const path = layer.getLatLngs()[0].map(p => ({ lat: p.lat, lng: p.lng }));
-                payload.type = 'polygon';
-                payload.polygon = { path };
+            if (multiShape) {
+                payload.shapes = layers.map(layerToShape).filter(Boolean);
+                payload.markers = instance.markers
+                    .filter(m => layers.some(l => l.getBounds?.().contains(m.getLatLng())))
+                    .map(m => m.userData || {});
+            } else {
+                payload.markers = instance.markers
+                    .filter(m => layer.getBounds?.().contains(m.getLatLng()))
+                    .map(m => m.userData || {});
             }
-
-            // Optioneel: markers binnen shape
-            payload.markers = instance.markers
-                .filter(m => layer.getBounds?.().contains(m.getLatLng()))
-                .map(m => m.userData || {});
 
             debug('dispatchComplete:', payload);
             window.Livewire.dispatch('lw-map:draw-complete', { payload });
@@ -232,12 +286,18 @@
         map.on(L.Draw.Event.CREATED, e => {
             debug('CREATED event - new shape drawn:', e.layerType);
             const layer = e.layer;
-            drawnItems.clearLayers(); // Zorg voor slechts 1 shape
-            // Clear radius circle reference since drawnItems was cleared
-            if (inst.radiusCircle) {
-                debug('Clearing existing radius circle');
-                inst.radiusCircle = null;
+            const multiShape = isMultiShape(inst.config);
+
+            if (!multiShape) {
+                drawnItems.clearLayers();
+                if (inst.radiusCircle) {
+                    debug('Clearing existing radius circle');
+                    inst.radiusCircle = null;
+                }
+            } else {
+                layer._lwId = nextShapeId();
             }
+
             drawnItems.addLayer(layer);
             if (layer.editing) {
                 layer.editing.enable(); // Maak direct editable: resizable en movable (leaflet-draw-drag handles dragging)
@@ -322,6 +382,7 @@
                     markers: JSON.parse(el.dataset.markers || '[]'),
                     useClusters: el.dataset.useClusters === 'true' || el.dataset.useClusters === '1',
                     enableDrawing: el.dataset.enableDrawing === '1',
+                    enableMultiShape: el.dataset.enableMultiShape === '1',
                 });
             }
             return;
@@ -343,10 +404,14 @@
         // Handle radius circle
         if (typeof d.radius === 'number' && d.centerLat && d.centerLng) {
             debug('Creating radius circle:', { center: [d.centerLat, d.centerLng], radius: d.radius, options: d.radiusOptions });
-            // Clear any existing drawn items and radius circle
-            inst.drawnItems.clearLayers();
+            const multiShape = isMultiShape(inst.config);
+
+            if (!multiShape) {
+                inst.drawnItems.clearLayers();
+            }
+
             if (inst.radiusCircle) {
-                inst.leafletMap.removeLayer(inst.radiusCircle);
+                inst.drawnItems.removeLayer(inst.radiusCircle);
                 inst.radiusCircle = null;
             }
             // Default options for the radius circle
@@ -361,7 +426,7 @@
                 radius: d.radius,
                 ...options,
             });
-            // Add to drawnItems so it becomes editable
+            circle._lwId = circle._lwId || 'lw-initial-radius';
             inst.drawnItems.addLayer(circle);
             inst.radiusCircle = circle;
             // Enable editing (resize/move)
@@ -376,6 +441,10 @@
                     inst.dispatchComplete(inst);
                 }
             });
+
+            if (multiShape && inst.dispatchComplete) {
+                inst.dispatchComplete(inst);
+            }
         } else if (d.radius === null && inst.radiusCircle) {
             debug('Removing radius circle (radius=null)');
             // Explicitly remove radius circle when radius is null
@@ -393,10 +462,41 @@
         }
     }
 
+    function handleRemoveShape(data) {
+        const d = Array.isArray(data) ? data[0] : (data || {});
+        const shapeId = d.id ? String(d.id) : null;
+
+        if (!shapeId) {
+            return;
+        }
+
+        // Collect first, remove after: removing inside eachLayer() mutates the collection being iterated.
+        Object.values(LW.instances).forEach(inst => {
+            const doomed = [];
+
+            inst.drawnItems.eachLayer(layer => {
+                if (layer._lwId === shapeId) {
+                    doomed.push(layer);
+                }
+            });
+
+            doomed.forEach(layer => {
+                inst.drawnItems.removeLayer(layer);
+                if (inst.radiusCircle === layer) {
+                    inst.radiusCircle = null;
+                }
+            });
+
+            // Geen dispatchComplete: dit event komt uit Livewire, dat zijn eigen staat al heeft
+            // bijgewerkt en de adressen opnieuw ophaalt. Terugkoppelen zou die query verdubbelen.
+        });
+    }
+
     // Registreer Livewire event listener wanneer Livewire beschikbaar is
     function registerLivewireListeners() {
         if (window.Livewire) {
             window.Livewire.on('lw-map-internal-update', handleMapUpdate);
+            window.Livewire.on('lw-map:remove-shape', handleRemoveShape);
         }
     }
 
@@ -430,8 +530,12 @@
                 if (inst.radiusCircle) {
                     inst.radiusCircle = null;
                 }
-                // dispatch clear event
-                window.Livewire.dispatch('lw-map:draw-complete', { payload: { id: mapId, type: null } });
+                // dispatch clear event — shapes: [] zodat de multi-shape kant dit ook als "leeg" ziet
+                const clearPayload = { id: mapId, type: null };
+                if (isMultiShape(inst.config)) {
+                    clearPayload.shapes = [];
+                }
+                window.Livewire.dispatch('lw-map:draw-complete', { payload: clearPayload });
             } else {
                 // Activeer mode
                 const drawType = type === 'circle' ? 'circle' : 'polygon';
@@ -455,6 +559,7 @@
                 markers: JSON.parse(el.dataset.markers || '[]'),
                 useClusters: el.dataset.useClusters === 'true' || el.dataset.useClusters === '1',
                 enableDrawing: el.dataset.enableDrawing === '1',
+                enableMultiShape: el.dataset.enableMultiShape === '1',
             };
             LW.queueInit(id, cfg);
         });

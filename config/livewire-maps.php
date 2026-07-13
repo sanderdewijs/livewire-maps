@@ -72,4 +72,7 @@ return [
 
     // Enable drawing functionality (toolbar and draw controls)
     'enable_drawing' => env('LW_MAPS_ENABLE_DRAWING', false),
+
+    // Allow multiple drawn shapes (circles/polygons) instead of replacing the previous one
+    'enable_multi_shape' => env('LW_MAPS_ENABLE_MULTI_SHAPE', false),
 ];
