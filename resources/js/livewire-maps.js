@@ -176,7 +176,7 @@
         const drawControl = new L.Control.Draw({
             position: 'topleft',
             draw: {
-                polygon: true,
+                polygon: { allowIntersection: false, showArea: false },
                 rectangle: false,
                 circle: true,
                 marker: false,
